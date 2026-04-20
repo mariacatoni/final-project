@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Life Through Concerts (vertical)</title>
+    <link rel="stylesheet" href="./style-vertical.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>My Life Through Concerts</h1>
+      <p class="lede">
+        Vertical view: <strong>2000</strong> at the top through <strong>2025</strong> at the bottom. The center line is the axis; all
+        <strong>2000s</strong> concerts sit on the right of the axis, <strong>2010s</strong> on the left, and <strong>2020s</strong> on the
+        right. Within each year, dots run from the axis outward in date order (earliest nearest the axis). Each dot is one calendar date;
+        same-day shows share a dot. Hover for artists; click for details.
+      </p>
+      <p class="status" data-status>Loading…</p>
+    </header>
+
+    <main class="page-main">
+      <div id="timeline-vertical" class="timeline-vertical-root" aria-label="Concerts from 2000 through 2025, vertical"></div>
+    </main>
+
+    <footer class="page-footer">
+      <p>
+        Tip: ES modules may not load from a <code>file://</code> URL in some browsers. Run
+        <code>python3 -m http.server 8000</code> from this folder and visit
+        <code>http://localhost:8000/index-vertical.html</code>.
+      </p>
+    </footer>
+
+    <script type="module" src="./js/timeline-vertical.js"></script>
+  </body>
+</html>

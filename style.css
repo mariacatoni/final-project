@@ -1,0 +1,223 @@
+:root {
+  color-scheme: light;
+  --bg: #f6f7fb;
+  --text: #121826;
+  --muted: rgba(18, 24, 38, 0.72);
+  --border: rgba(18, 24, 38, 0.12);
+  --dot: #2f6fed;
+  --dot-hover: #1f58d2;
+  --shadow: 0 10px 30px rgba(18, 24, 38, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  background: var(--bg);
+  color: var(--text);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.95em;
+}
+
+.page-header,
+.page-main,
+.page-footer {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.page-header {
+  padding: 28px 0 10px;
+}
+
+.page-main {
+  padding: 10px 0 28px;
+}
+
+.page-footer {
+  padding: 0 0 28px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+h1 {
+  margin: 0 0 10px;
+  font-size: clamp(26px, 3vw, 34px);
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  margin: 0 0 10px;
+  max-width: 80ch;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.status {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.timeline-root {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+
+.timeline-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+
+.timeline-continuous {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: max-content;
+}
+
+.year-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+}
+
+.year-group:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.year-group-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.year-group-years {
+  display: flex;
+  gap: 4px;
+}
+
+.year-col {
+  flex: 0 0 auto;
+  width: 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.year-track {
+  position: relative;
+  height: 240px;
+}
+
+.year-label {
+  text-align: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  user-select: none;
+}
+
+.event-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--dot);
+  transform: translate(-50%, calc(-50% + var(--y, 0px))) scale(1.5);
+  transform-origin: center;
+  cursor: pointer;
+}
+
+.event-detail-popover {
+  position: fixed;
+  z-index: 1000;
+  margin: 0;
+  min-width: 168px;
+  max-width: min(300px, calc(100vw - 24px));
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.event-detail-popover-date {
+  margin: 0 0 8px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.event-detail-popover-artists {
+  margin: 0;
+  padding-left: 1.15em;
+  color: var(--muted);
+}
+
+.event-detail-popover-artists li {
+  margin: 0.2em 0;
+}
+
+.event-dot:hover {
+  background: var(--dot-hover);
+  transform: translate(-50%, calc(-50% + var(--y, 0px))) scale(1.59);
+}
+
+.event-dot:focus-visible {
+  outline: 3px solid rgba(47, 111, 237, 0.35);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .year-col {
+    width: 34px;
+  }
+
+  .year-track {
+    height: 220px;
+  }
+
+  .timeline-root {
+    padding: 12px 12px;
+  }
+
+  .timeline-continuous {
+    gap: 12px;
+  }
+
+  .year-group {
+    padding-right: 12px;
+    gap: 8px;
+  }
+}

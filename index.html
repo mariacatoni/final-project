@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Life Through Concerts</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>My Life Through Concerts</h1>
+      <p class="lede">
+        Each dot is one concert date (data exported from <strong>Concert Data.xlsx</strong>). If you saw multiple shows on
+        the same day, they share a dot. The timeline is one continuous horizontal strip from <strong>2000</strong> to
+        <strong>2025</strong>, with section labels for <strong>2000–2009</strong>, <strong>2010–2019</strong>, and
+        <strong>2020–2025</strong>. Year labels show the last two digits (for example, <strong>07</strong> =
+        <strong>2007</strong>). Hover a dot to see artists from column B (comma-separated).
+      </p>
+      <p class="status" data-status>Loading…</p>
+    </header>
+
+    <main class="page-main">
+      <div id="timeline" class="timeline-root" aria-label="Concerts from 2000 through 2025"></div>
+    </main>
+
+    <footer class="page-footer">
+      <p>
+        Tip: ES modules may not load from a <code>file://</code> URL in some browsers. If the page is blank, run
+        <code>python3 -m http.server 8000</code> from this folder and visit <code>http://localhost:8000</code>.
+      </p>
+    </footer>
+
+    <script type="module" src="./js/timeline.js"></script>
+  </body>
+</html>
