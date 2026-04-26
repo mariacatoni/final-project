@@ -118,7 +118,7 @@ h1 {
 
 .decade-header-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
   align-items: start;
   padding-bottom: 10px;
 }
@@ -191,7 +191,7 @@ h1 {
 
 .year-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
   align-items: stretch;
   min-height: 36px;
   border-bottom: 1px solid rgba(18, 24, 38, 0.06);
@@ -237,7 +237,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
+  min-width: 48px;
   padding: 4px 6px;
   border-radius: 999px;
   background: #fff;
@@ -269,13 +269,165 @@ h1 {
   margin: 0;
   min-width: 168px;
   max-width: min(300px, calc(100vw - 24px));
-  padding: 10px 14px;
+  padding: 0;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: #fff;
   box-shadow: var(--shadow);
   font-size: 13px;
   line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  max-height: min(85vh, calc(100vh - 16px));
+  overflow: hidden;
+}
+
+.event-detail-popover[hidden] {
+  display: none !important;
+}
+
+.event-detail-popover-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 10;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.event-detail-popover-close:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.event-detail-popover-close:focus-visible {
+  outline: 2px solid rgba(47, 111, 237, 0.45);
+  outline-offset: 2px;
+}
+
+.event-detail-popover-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 40px 14px 12px 14px;
+}
+
+.event-detail-popover--rich {
+  max-width: min(420px, calc(100vw - 24px));
+}
+
+.event-detail-popover-rich {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.event-detail-popover-lead {
+  margin: 0 0 8px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.event-detail-popover-body {
+  margin: 0 0 0.65em;
+  color: var(--text);
+}
+
+.event-detail-popover-body:last-of-type {
+  margin-bottom: 0.35em;
+}
+
+.event-detail-popover-rich-media {
+  margin: 0 0 12px;
+}
+
+.event-detail-popover-figure {
+  margin: 0;
+}
+
+.event-detail-popover-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.event-detail-popover-slideshow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-detail-popover-slides-viewport {
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.event-detail-popover-slides-track {
+  display: flex;
+  transition: transform 0.22s ease;
+}
+
+.event-detail-popover-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+.event-detail-popover-slideshow-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.event-detail-popover-slideshow-btn {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.event-detail-popover-slideshow-btn:hover:not(:disabled) {
+  background: rgba(47, 111, 237, 0.08);
+}
+
+.event-detail-popover-slideshow-btn:focus-visible {
+  outline: 2px solid rgba(47, 111, 237, 0.45);
+  outline-offset: 2px;
+}
+
+.event-detail-popover-slideshow-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.event-detail-popover-slideshow-counter {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 3.5em;
+  text-align: center;
 }
 
 .event-detail-popover-date {
@@ -307,7 +459,7 @@ h1 {
 @media (max-width: 720px) {
   .year-row,
   .decade-header-row {
-    grid-template-columns: minmax(0, 1fr) 46px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
   }
 
   .year-side--left {

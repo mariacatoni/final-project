@@ -1,4 +1,11 @@
 import { CONCERT_EVENTS } from "./events-data.js";
+import {
+  formatDisplayDate,
+  createEventPopover,
+  showEventPopover,
+  hideEventPopover,
+  attachPopoverGlobalListeners,
+} from "./event-popover.js";
 
 const START_YEAR = 2000;
 const END_YEAR = 2025;
@@ -56,121 +63,7 @@ function clampYear(year) {
 }
 
 function formatYearLabel(year) {
-  return String(year % 100).padStart(2, "0");
-}
-
-/**
- * @param {string} isoDate `YYYY-MM-DD`
- * @returns {string}
- */
-function formatDisplayDate(isoDate) {
-  const parts = isoDate.split("-");
-  if (parts.length !== 3) return isoDate;
-  const y = Number(parts[0]);
-  const m = Number(parts[1]) - 1;
-  const d = Number(parts[2]);
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return isoDate;
-  const dt = new Date(y, m, d);
-  return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-}
-
-/** @typedef {{ el: HTMLDivElement; dateEl: HTMLParagraphElement; listEl: HTMLUListElement }} EventPopover */
-
-/** @returns {EventPopover} */
-function createEventPopover() {
-  const el = document.createElement("div");
-  el.className = "event-detail-popover";
-  el.setAttribute("role", "dialog");
-  el.setAttribute("aria-label", "Concert details");
-  el.hidden = true;
-
-  const dateEl = document.createElement("p");
-  dateEl.className = "event-detail-popover-date";
-
-  const listEl = document.createElement("ul");
-  listEl.className = "event-detail-popover-artists";
-
-  el.append(dateEl, listEl);
-  return { el, dateEl, listEl };
-}
-
-/** @type {HTMLButtonElement | null} */
-let activeDotEl = null;
-
-/**
- * @param {EventPopover} popover
- * @param {MouseEvent} pointerEvent
- * @param {HTMLElement} anchorEl
- */
-function positionPopoverNearPointer(popover, pointerEvent, anchorEl) {
-  const { el } = popover;
-  const pad = 8;
-  const w = el.offsetWidth;
-  const h = el.offsetHeight;
-  let left = pointerEvent.clientX;
-  let top = pointerEvent.clientY;
-  if (!Number.isFinite(left) || !Number.isFinite(top) || (left === 0 && top === 0)) {
-    const rect = anchorEl.getBoundingClientRect();
-    left = rect.left;
-    top = rect.bottom + 4;
-  }
-  left = Math.max(pad, Math.min(left, window.innerWidth - pad - w));
-  top = Math.max(pad, Math.min(top, window.innerHeight - pad - h));
-  el.style.left = `${left}px`;
-  el.style.top = `${top}px`;
-}
-
-/**
- * @param {EventPopover} popover
- * @param {{ date: string; artists: string[] }} ev
- * @param {HTMLButtonElement} anchorEl
- * @param {MouseEvent} pointerEvent
- */
-function showEventPopover(popover, ev, anchorEl, pointerEvent) {
-  activeDotEl = anchorEl;
-  popover.dateEl.textContent = formatDisplayDate(ev.date);
-  popover.listEl.replaceChildren();
-  for (const name of ev.artists) {
-    const li = document.createElement("li");
-    li.textContent = name;
-    popover.listEl.appendChild(li);
-  }
-  popover.el.hidden = false;
-  popover.el.classList.add("is-open");
-  requestAnimationFrame(() => {
-    positionPopoverNearPointer(popover, pointerEvent, anchorEl);
-  });
-}
-
-/** @param {EventPopover} popover */
-function hideEventPopover(popover) {
-  popover.el.classList.remove("is-open");
-  popover.el.hidden = true;
-  if (activeDotEl) {
-    activeDotEl.focus({ preventScroll: true });
-    activeDotEl = null;
-  }
-}
-
-/**
- * @param {EventPopover} popover
- * @param {(e: PointerEvent) => void} onOutsidePointerDown
- */
-function attachPopoverGlobalListeners(popover, onOutsidePointerDown) {
-  document.addEventListener("pointerdown", onOutsidePointerDown);
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && popover.el.classList.contains("is-open")) hideEventPopover(popover);
-  });
-  window.addEventListener("resize", () => {
-    if (popover.el.classList.contains("is-open")) hideEventPopover(popover);
-  });
-  window.addEventListener(
-    "scroll",
-    () => {
-      if (popover.el.classList.contains("is-open")) hideEventPopover(popover);
-    },
-    { passive: true }
-  );
+  return String(year);
 }
 
 /**
@@ -214,7 +107,7 @@ const DECADE_DUMMY_BLURBS = [
 /**
  * @param {HTMLElement} rootEl
  * @param {ReturnType<typeof groupEventsByYear>} byYear
- * @param {EventPopover} popover
+ * @param {ReturnType<typeof createEventPopover>} popover
  */
 function renderTimelineVertical(rootEl, byYear, popover) {
   rootEl.replaceChildren();
@@ -337,7 +230,7 @@ function main() {
     document.body.appendChild(popover.el);
 
     const onOutsidePointerDown = (e) => {
-      if (!popover.el.classList.contains("is-open")) return;
+      if (popover.el.hidden) return;
       const t = e.target;
       if (!(t instanceof Node)) return;
       if (popover.el.contains(t)) return;
@@ -347,6 +240,13 @@ function main() {
 
     renderTimelineVertical(root, byYear, popover);
     attachPopoverGlobalListeners(popover, onOutsidePointerDown);
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!popover.el.hidden) hideEventPopover(popover);
+      },
+      { passive: true }
+    );
 
     setStatus(
       `${CONCERT_EVENTS.length} concerts across ${merged.length} concert dates between ${START_YEAR} and ${END_YEAR}. Click a dot for date and artists.`
