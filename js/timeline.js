@@ -1,3 +1,4 @@
+// Raw concert rows from the static dataset; popover helpers for dots and the detail dialog.
 import { CONCERT_EVENTS } from "./events-data.js";
 import {
   formatDisplayDate,
@@ -7,11 +8,12 @@ import {
   attachPopoverGlobalListeners,
 } from "./event-popover.js";
 
+// -----------------------------------------------------------------------------
+// Timeline range and decade groupings
+// Which years appear on the axis and how they roll up into labeled buckets (2000s, 2010s, 2020s).
+// -----------------------------------------------------------------------------
 const START_YEAR = 2000;
 const END_YEAR = 2025;
-
-// Vertical spacing between stacked dots within a year column (center-to-center stride).
-const DOT_STRIDE_PX = 16;
 
 const YEAR_BUCKETS = [
   { label: "2000s", startYear: 2000, endYear: 2009 },
@@ -19,27 +21,40 @@ const YEAR_BUCKETS = [
   { label: "2020s", startYear: 2020, endYear: 2025 },
 ];
 
+// -----------------------------------------------------------------------------
+// Merging and ordering events
+// Multiple CSV-style rows for the same calendar date become one event with several
+// artists; compareMergedEvents defines stable sort order for lists and years.
+// -----------------------------------------------------------------------------
 /**
- * Collapse multiple spreadsheet rows that share the same calendar date into one timeline dot.
- *
- * Hover text uses column B values joined with commas.
- *
+ * @param {{ sortKey: number; date: string; artists: { name: string }[] }} a
+ * @param {{ sortKey: number; date: string; artists: { name: string }[] }} b
+ */
+function compareMergedEvents(a, b) {
+  if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
+  if (a.date !== b.date) return a.date.localeCompare(b.date);
+  return a.artists[0].name.localeCompare(b.artists[0].name);
+}
+
+/**
  * @param {typeof CONCERT_EVENTS} events
  */
 function mergeEventsByDate(events) {
-  /** @type {Map<string, {date: string, year: number, artists: string[], sortKey: number}>} */
+  /** @type {Map<string, {date: string, year: number, artists: { name: string; setlist?: string }[], sortKey: number}>} */
   const groups = new Map();
 
   for (const e of events) {
     const key = `${e.year}|${e.date}`;
-    const artist = (e.artist ?? "").trim() || "Unknown artist";
+    const name = (e.artist ?? "").trim() || "Unknown artist";
+    const setlist =
+      typeof e.setlist === "string" && e.setlist.trim() !== "" ? e.setlist.trim() : undefined;
 
     const existing = groups.get(key);
     if (!existing) {
       groups.set(key, {
         date: e.date,
         year: e.year,
-        artists: [artist],
+        artists: [setlist ? { name, setlist } : { name }],
         sortKey: e.sortKey,
       });
       continue;
@@ -47,18 +62,21 @@ function mergeEventsByDate(events) {
 
     existing.sortKey = Math.min(existing.sortKey, e.sortKey);
 
-    if (!existing.artists.includes(artist)) {
-      existing.artists.push(artist);
+    const i = existing.artists.findIndex((a) => a.name === name);
+    if (i === -1) {
+      existing.artists.push(setlist ? { name, setlist } : { name });
+    } else if (setlist && !existing.artists[i].setlist) {
+      existing.artists[i].setlist = setlist;
     }
   }
 
-  return [...groups.values()].sort((a, b) => {
-    if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    return a.artists[0].localeCompare(b.artists[0]);
-  });
+  return [...groups.values()].sort(compareMergedEvents);
 }
 
+// -----------------------------------------------------------------------------
+// Small DOM and year helpers
+// Strict querySelector wrapper for required mount nodes; clampYear filters outliers.
+// -----------------------------------------------------------------------------
 function $(selector, root = document) {
   const el = root.querySelector(selector);
   if (!el) throw new Error(`Missing element: ${selector}`);
@@ -69,77 +87,10 @@ function clampYear(year) {
   return year >= START_YEAR && year <= END_YEAR;
 }
 
-function formatYearLabel(year) {
-  return String(year);
-}
-
-/**
- * Build symmetric vertical offsets (in px) around an invisible center line.
- *
- * Rules:
- * - Odd counts keep a dot exactly on the axis (`y = 0`), then expand outward.
- * - Even counts use **half-steps** (`±0.5d, ±1.5d, …`) so paired dots straddle the axis
- *   instead of leaving an empty gap at `y = 0`.
- */
-function symmetricOffsetsPx(count) {
-  if (count <= 0) return [];
-  if (count === 1) return [0];
-
-  const d = DOT_STRIDE_PX;
-
-  if (count % 2 === 1) {
-    /** @type {number[]} */
-    const offsets = [0];
-    let k = 1;
-    while (offsets.length < count) {
-      offsets.push(-k * d, k * d);
-      k += 1;
-    }
-    return offsets.slice(0, count);
-  }
-
-  /** @type {number[]} */
-  const offsets = [];
-  let band = 0;
-  while (offsets.length < count) {
-    const mag = (band + 0.5) * d;
-    offsets.push(-mag, mag);
-    band += 1;
-  }
-  return offsets.slice(0, count);
-}
-
-/**
- * @param {{ sortKey: number; date: string; artists: string[] }} a
- * @param {{ sortKey: number; date: string; artists: string[] }} b
- */
-function compareMergedEvents(a, b) {
-  if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
-  if (a.date !== b.date) return a.date.localeCompare(b.date);
-  return a.artists[0].localeCompare(b.artists[0]);
-}
-
-/**
- * Symmetric offsets are only a set of allowed positions; assign them so chronological order reads
- * bottom → top within the column (earliest concert dates lower on screen).
- *
- * Positive `--y` translates downward in CSS, so earliest → largest y.
- *
- * @param {Array<{ sortKey: number; date: string; artists: string[] }>} yearEvents chronological ASC
- * @returns {number[]}
- */
-function offsetsBottomToTopChronological(yearEvents) {
-  const n = yearEvents.length;
-  const template = symmetricOffsetsPx(n)
-    .slice()
-    .sort((x, y) => y - x); // largest (most “down”) first → earliest dates
-
-  /** @type {number[]} */
-  const assigned = new Array(n);
-  for (let i = 0; i < n; i++) assigned[i] = template[i] ?? 0;
-  return assigned;
-}
-
+// -----------------------------------------------------------------------------
+// Events indexed by calendar year
+// Builds a map year → merged events, drops out-of-range years, sorts each year’s list.
+// -----------------------------------------------------------------------------
 function groupEventsByYear(events) {
   /** @type {Map<number, typeof events>} */
   const byYear = new Map();
@@ -157,95 +108,151 @@ function groupEventsByYear(events) {
   return byYear;
 }
 
+// -----------------------------------------------------------------------------
+// Decade layout helpers
+// Alternates which side of the central axis holds events vs empty space; placeholder
+// blurbs fill decade headers until real copy replaces them.
+// -----------------------------------------------------------------------------
+/** First decade (2000s) on the right of the axis; alternate left/right for each following decade. */
+function decadeEventsOnRight(decadeIndex) {
+  return decadeIndex % 2 === 0;
+}
+
+const DECADE_DUMMY_BLURBS = [
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+  "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+  "Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida.",
+];
+
+// -----------------------------------------------------------------------------
+// Vertical timeline DOM
+// Renders decade blocks, year rows, central axis labels, and interactive dots that
+// open the shared event popover with merged artist data for that date.
+// -----------------------------------------------------------------------------
 /**
  * @param {HTMLElement} rootEl
  * @param {ReturnType<typeof groupEventsByYear>} byYear
  * @param {ReturnType<typeof createEventPopover>} popover
  */
-function renderTimeline(rootEl, byYear, popover) {
+function renderTimelineVertical(rootEl, byYear, popover) {
   rootEl.replaceChildren();
 
-  const scroll = document.createElement("div");
-  scroll.className = "timeline-scroll";
+  const wrap = document.createElement("div");
+  wrap.className = "timeline-vertical-wrap";
 
-  const continuous = document.createElement("div");
-  continuous.className = "timeline-continuous";
+  const inner = document.createElement("div");
+  inner.className = "timeline-vertical-inner";
 
-  for (const bucket of YEAR_BUCKETS) {
-    const group = document.createElement("section");
-    group.className = "year-group";
+  YEAR_BUCKETS.forEach((bucket, decadeIndex) => {
+    const block = document.createElement("div");
+    block.className = "decade-block";
 
-    const headingId = `year-group-${bucket.startYear}-${bucket.endYear}`;
-    group.setAttribute("aria-labelledby", headingId);
+    const onRight = decadeEventsOnRight(decadeIndex);
 
-    const heading = document.createElement("h2");
-    heading.id = headingId;
-    heading.className = "year-group-title";
-    heading.textContent = bucket.label;
+    const headerRow = document.createElement("div");
+    headerRow.className = "decade-header-row";
 
-    const yearsRow = document.createElement("div");
-    yearsRow.className = "year-group-years";
-    yearsRow.setAttribute("role", "list");
+    const headerLeft = document.createElement("div");
+    headerLeft.className = "decade-header-side decade-header-side--left";
+    const headerAxis = document.createElement("div");
+    headerAxis.className = "decade-header-axis";
+    headerAxis.setAttribute("aria-hidden", "true");
+    const headerRight = document.createElement("div");
+    headerRight.className = "decade-header-side decade-header-side--right";
+
+    const headerInner = document.createElement("div");
+    headerInner.className = "decade-header-inner";
+
+    const h2 = document.createElement("h2");
+    h2.className = "decade-title";
+    h2.textContent = bucket.label;
+
+    const blurb = document.createElement("p");
+    blurb.className = "decade-header-blurb";
+    blurb.textContent = DECADE_DUMMY_BLURBS[decadeIndex] ?? DECADE_DUMMY_BLURBS[0];
+
+    headerInner.append(h2, blurb);
+
+    if (onRight) {
+      headerLeft.classList.add("decade-header-side--filled");
+      headerLeft.appendChild(headerInner);
+      headerRight.classList.add("decade-header-side--empty");
+    } else {
+      headerRight.classList.add("decade-header-side--filled");
+      headerRight.appendChild(headerInner);
+      headerLeft.classList.add("decade-header-side--empty");
+    }
+
+    headerRow.append(headerLeft, headerAxis, headerRight);
+    block.appendChild(headerRow);
 
     for (let year = bucket.startYear; year <= bucket.endYear; year++) {
-      const col = document.createElement("section");
-      col.className = "year-col";
-      col.setAttribute("role", "listitem");
+      const row = document.createElement("div");
+      row.className = "year-row";
 
-      const track = document.createElement("div");
-      track.className = "year-track";
+      const leftCell = document.createElement("div");
+      const axisCell = document.createElement("div");
+      const rightCell = document.createElement("div");
 
-      const yearEvents = (byYear.get(year) ?? []).slice().sort(compareMergedEvents);
-      const offsets = offsetsBottomToTopChronological(yearEvents);
+      const yearEvents = byYear.get(year) ?? [];
 
-      yearEvents.forEach((ev, idx) => {
+      const eventsCell = onRight ? rightCell : leftCell;
+      const emptyCell = onRight ? leftCell : rightCell;
+
+      eventsCell.className = `year-side year-side--events ${onRight ? "year-side--right" : "year-side--left"}`;
+      emptyCell.className = "year-side year-side--empty";
+
+      axisCell.className = "year-axis-cell";
+      const yearLabel = document.createElement("span");
+      yearLabel.className = "year-axis-label";
+      yearLabel.textContent = String(year);
+      yearLabel.setAttribute("title", String(year));
+      axisCell.appendChild(yearLabel);
+
+      for (const ev of yearEvents) {
         const dot = document.createElement("button");
         dot.type = "button";
         dot.className = "event-dot";
-        dot.style.setProperty("--y", `${offsets[idx]}px`);
-        const hoverText = ev.artists.join(", ");
+        const hoverText = ev.artists.map((a) => a.name).join(", ");
         dot.title = hoverText;
         dot.setAttribute("aria-haspopup", "dialog");
-        dot.setAttribute(
-          "aria-label",
-          `${formatDisplayDate(ev.date)}: ${hoverText}. Click for details.`
-        );
+        dot.setAttribute("aria-label", `${formatDisplayDate(ev.date)}: ${hoverText}. Click for details.`);
 
         dot.addEventListener("click", (e) => {
           e.stopPropagation();
           showEventPopover(popover, ev, dot, e);
         });
 
-        track.appendChild(dot);
-      });
+        eventsCell.appendChild(dot);
+      }
 
-      const yearLabel = document.createElement("div");
-      yearLabel.className = "year-label";
-      yearLabel.textContent = formatYearLabel(year);
-
-      col.append(track, yearLabel);
-      yearsRow.appendChild(col);
+      row.append(leftCell, axisCell, rightCell);
+      block.appendChild(row);
     }
 
-    group.append(heading, yearsRow);
-    continuous.appendChild(group);
-  }
-
-  scroll.appendChild(continuous);
-  rootEl.appendChild(scroll);
-
-  scroll.addEventListener("scroll", () => {
-    if (!popover.el.hidden) hideEventPopover(popover);
+    inner.appendChild(block);
   });
+
+  wrap.appendChild(inner);
+  rootEl.appendChild(wrap);
 }
 
+// -----------------------------------------------------------------------------
+// Live region / status line updates
+// Writes progress and result counts to [data-status] when present (e.g. a11y-friendly summary).
+// -----------------------------------------------------------------------------
 function setStatus(message) {
   const el = document.querySelector("[data-status]");
   if (el) el.textContent = message;
 }
 
+// -----------------------------------------------------------------------------
+// Bootstrap
+// Merges data, mounts the timeline and popover on #timeline-vertical, wires outside-click
+// and scroll-to-close, and reports success or errors via setStatus.
+// -----------------------------------------------------------------------------
 function main() {
-  const root = $("#timeline");
+  const root = $("#timeline-vertical");
 
   setStatus("Rendering timeline…");
 
@@ -264,11 +271,19 @@ function main() {
       if (t instanceof Element && t.closest(".event-dot")) return;
       hideEventPopover(popover);
     };
-    attachPopoverGlobalListeners(popover, onOutsidePointerDown);
 
-    renderTimeline(root, byYear, popover);
+    renderTimelineVertical(root, byYear, popover);
+    attachPopoverGlobalListeners(popover, onOutsidePointerDown);
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!popover.el.hidden) hideEventPopover(popover);
+      },
+      { passive: true }
+    );
+
     setStatus(
-      `${CONCERT_EVENTS.length} concerts across ${merged.length} concert dates between ${START_YEAR} and ${END_YEAR}. Click a dot for date and artists; hover still shows a quick artist preview.`
+      `${CONCERT_EVENTS.length} concerts across ${merged.length} concert dates between ${START_YEAR} and ${END_YEAR}. Click a dot for date and artists.`
     );
   } catch (err) {
     console.error(err);

@@ -1,10 +1,29 @@
+// Loads optional long-form copy and images keyed by concert date for the detail pane.
 import { getRichDetailForDate } from "./event-rich-details.js";
 
-/** @typedef {{ src: string; alt: string }} RichImage */
+// -----------------------------------------------------------------------------
+// Rich media in the popover
+// Builds lazy-loaded <figure>/<img> nodes and either a single image layout or a
+// small carousel (prev/next, live counter) when there are multiple photos.
+// -----------------------------------------------------------------------------
+/**
+ * @param {import("./event-rich-details.js").RichImage} image
+ * @param {string} figureClass
+ */
+function createLazyFigure(image, figureClass) {
+  const fig = document.createElement("figure");
+  fig.className = figureClass;
+  const im = document.createElement("img");
+  im.src = image.src;
+  im.alt = image.alt;
+  im.loading = "lazy";
+  fig.appendChild(im);
+  return fig;
+}
 
 /**
  * @param {HTMLElement} richEl
- * @param {RichImage[]} images
+ * @param {import("./event-rich-details.js").RichImage[]} images
  */
 function appendRichMediaBlock(richEl, images) {
   if (images.length === 0) return;
@@ -13,14 +32,9 @@ function appendRichMediaBlock(richEl, images) {
   wrap.className = "event-detail-popover-rich-media";
 
   if (images.length === 1) {
-    const fig = document.createElement("figure");
-    fig.className = "event-detail-popover-figure event-detail-popover-figure--solo";
-    const im = document.createElement("img");
-    im.src = images[0].src;
-    im.alt = images[0].alt;
-    im.loading = "lazy";
-    fig.appendChild(im);
-    wrap.appendChild(fig);
+    wrap.appendChild(
+      createLazyFigure(images[0], "event-detail-popover-figure event-detail-popover-figure--solo")
+    );
     richEl.appendChild(wrap);
     return;
   }
@@ -40,14 +54,7 @@ function appendRichMediaBlock(richEl, images) {
   for (const img of images) {
     const slide = document.createElement("div");
     slide.className = "event-detail-popover-slide";
-    const fig = document.createElement("figure");
-    fig.className = "event-detail-popover-figure";
-    const im = document.createElement("img");
-    im.src = img.src;
-    im.alt = img.alt;
-    im.loading = "lazy";
-    fig.appendChild(im);
-    slide.appendChild(fig);
+    slide.appendChild(createLazyFigure(img, "event-detail-popover-figure"));
     track.appendChild(slide);
   }
 
@@ -101,6 +108,10 @@ function appendRichMediaBlock(richEl, images) {
   applyIndex();
 }
 
+// -----------------------------------------------------------------------------
+// Date formatting for the UI
+// Converts ISO calendar dates (YYYY-MM-DD) to a readable US locale string.
+// -----------------------------------------------------------------------------
 /**
  * @param {string} isoDate `YYYY-MM-DD`
  * @returns {string} e.g. "April 7, 2000"
@@ -116,7 +127,13 @@ export function formatDisplayDate(isoDate) {
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-/** @typedef {{ el: HTMLDivElement; dateEl: HTMLParagraphElement; listEl: HTMLUListElement; richEl: HTMLDivElement; closeBtn: HTMLButtonElement; scrollEl: HTMLDivElement }} EventPopover */
+// -----------------------------------------------------------------------------
+// Popover structure and visibility
+// Typedef and activeDotEl track the open dialog and the dot that opened it (for
+// focus on close). hideEventPopover hides the dialog; createEventPopover builds
+// the markup (header, scroll area, artist list, rich region) and wires the close control.
+// -----------------------------------------------------------------------------
+/** @typedef {{ el: HTMLDivElement; headerEl: HTMLDivElement; dateEl: HTMLParagraphElement; listEl: HTMLParagraphElement; richEl: HTMLDivElement; closeBtn: HTMLButtonElement; scrollEl: HTMLDivElement }} EventPopover */
 
 /** @type {HTMLButtonElement | null} */
 let activeDotEl = null;
@@ -135,8 +152,15 @@ export function createEventPopover() {
   const el = document.createElement("div");
   el.className = "event-detail-popover";
   el.setAttribute("role", "dialog");
-  el.setAttribute("aria-label", "Concert details");
   el.hidden = true;
+
+  const headerEl = document.createElement("div");
+  headerEl.className = "event-detail-popover-header";
+
+  const dateEl = document.createElement("p");
+  dateEl.className = "event-detail-popover-date";
+  dateEl.id = "event-detail-popover-title";
+  el.setAttribute("aria-labelledby", "event-detail-popover-title");
 
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
@@ -144,25 +168,23 @@ export function createEventPopover() {
   closeBtn.setAttribute("aria-label", "Close");
   closeBtn.textContent = "\u00D7";
 
+  headerEl.append(dateEl, closeBtn);
+
   const scrollEl = document.createElement("div");
   scrollEl.className = "event-detail-popover-scroll";
 
-  const dateEl = document.createElement("p");
-  dateEl.className = "event-detail-popover-date";
-
-  const listEl = document.createElement("ul");
+  const listEl = document.createElement("p");
   listEl.className = "event-detail-popover-artists";
 
   const richEl = document.createElement("div");
   richEl.className = "event-detail-popover-rich";
   richEl.hidden = true;
 
-  scrollEl.append(dateEl, listEl, richEl);
-  /* Close after scroll so it stacks above the scroll layer and receives clicks. */
-  el.append(scrollEl, closeBtn);
+  scrollEl.append(listEl, richEl);
+  el.append(headerEl, scrollEl);
 
   /** @type {EventPopover} */
-  const popover = { el, dateEl, listEl, richEl, closeBtn, scrollEl };
+  const popover = { el, headerEl, dateEl, listEl, richEl, closeBtn, scrollEl };
   const onClose = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -173,6 +195,11 @@ export function createEventPopover() {
   return popover;
 }
 
+// -----------------------------------------------------------------------------
+// Popover placement
+// Positions the dialog near the click (or under the anchor if coords missing),
+// clamped so it stays inside the viewport with a small margin.
+// -----------------------------------------------------------------------------
 /**
  * @param {EventPopover} popover
  * @param {MouseEvent} pointerEvent
@@ -196,9 +223,14 @@ function positionPopoverNearPointer(popover, pointerEvent, anchorEl) {
   el.style.top = `${top}px`;
 }
 
+// -----------------------------------------------------------------------------
+// Showing the popover with event + optional rich copy
+// Fills date, artist list (with optional setlist links), then rich text/images
+// from event-rich-details when available; toggles layout class and visibility.
+// -----------------------------------------------------------------------------
 /**
  * @param {EventPopover} popover
- * @param {{ date: string; artists: string[] }} ev
+ * @param {{ date: string; artists: { name: string; setlist?: string }[] }} ev
  * @param {HTMLButtonElement} anchorEl
  * @param {MouseEvent} pointerEvent
  */
@@ -206,10 +238,23 @@ export function showEventPopover(popover, ev, anchorEl, pointerEvent) {
   activeDotEl = anchorEl;
   popover.dateEl.textContent = formatDisplayDate(ev.date);
   popover.listEl.replaceChildren();
-  for (const name of ev.artists) {
-    const li = document.createElement("li");
-    li.textContent = name;
-    popover.listEl.appendChild(li);
+  const n = ev.artists.length;
+  for (let i = 0; i < n; i++) {
+    const a = ev.artists[i];
+    if (a.setlist) {
+      const link = document.createElement("a");
+      link.className = "event-detail-popover-artist-link";
+      link.href = a.setlist;
+      link.textContent = a.name;
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+      popover.listEl.appendChild(link);
+    } else {
+      popover.listEl.appendChild(document.createTextNode(a.name));
+    }
+    if (i < n - 1) {
+      popover.listEl.appendChild(document.createTextNode(", "));
+    }
   }
 
   const detail = getRichDetailForDate(ev.date);
@@ -246,6 +291,10 @@ export function showEventPopover(popover, ev, anchorEl, pointerEvent) {
   });
 }
 
+// -----------------------------------------------------------------------------
+// Global behavior while the popover is used from the timeline
+// Outside clicks (handled by caller), Escape, and window resize all close/hide.
+// -----------------------------------------------------------------------------
 /**
  * @param {EventPopover} popover
  * @param {(e: PointerEvent) => void} onOutsidePointerDown

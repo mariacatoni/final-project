@@ -10,23 +10,23 @@
     <header class="page-header">
       <h1>My Life Through Concerts</h1>
       <p class="lede">
-        Each dot is one concert date (data exported from <strong>Concert Data.xlsx</strong>). If you saw multiple shows on
-        the same day, they share a dot. The timeline is one continuous horizontal strip from <strong>2000</strong> to
-        <strong>2025</strong>, with section labels for <strong>2000–2009</strong>, <strong>2010–2019</strong>, and
-        <strong>2020–2025</strong>. Each column is labeled with the full year (for example, <strong>2007</strong>). Hover a
-        dot to see artists from column B (comma-separated).
+        <strong>2000</strong> at the top through <strong>2025</strong> at the bottom. The center line is the axis; all
+        <strong>2000s</strong> concerts sit on the right of the axis, <strong>2010s</strong> on the left, and <strong>2020s</strong> on the
+        right. Within each year, dots run from the axis outward in date order (earliest nearest the axis). Each dot is one calendar date;
+        same-day shows share a dot. Hover for artists; click for details.
       </p>
       <p class="status" data-status>Loading…</p>
     </header>
 
     <main class="page-main">
-      <div id="timeline" class="timeline-root" aria-label="Concerts from 2000 through 2025"></div>
+      <div id="timeline-vertical" class="timeline-vertical-root" aria-label="Concerts from 2000 through 2025, vertical"></div>
     </main>
 
     <footer class="page-footer">
       <p>
-        Tip: ES modules may not load from a <code>file://</code> URL in some browsers. If the page is blank, run
-        <code>python3 -m http.server 8000</code> from this folder and visit <code>http://localhost:8000</code>.
+        Tip: ES modules may not load from a <code>file://</code> URL in some browsers. Run
+        <code>python3 -m http.server 8000</code> from this folder and visit
+        <code>http://localhost:8000</code>.
       </p>
     </footer>
 
