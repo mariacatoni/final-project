@@ -7,7 +7,7 @@ import { getRichDetailForDate } from "./event-rich-details.js";
 // small carousel (prev/next, live counter) when there are multiple photos.
 // -----------------------------------------------------------------------------
 /**
- * @param {import("./event-rich-details.js").RichImage} image
+ * @param {{ src: string; alt: string }} image
  * @param {string} figureClass
  */
 function createLazyFigure(image, figureClass) {
@@ -22,18 +22,47 @@ function createLazyFigure(image, figureClass) {
 }
 
 /**
- * @param {HTMLElement} richEl
- * @param {import("./event-rich-details.js").RichImage[]} images
+ * @param {import("./event-rich-details.js").RichYoutubeSlide} slide
+ * @param {string} figureClass
  */
-function appendRichMediaBlock(richEl, images) {
-  if (images.length === 0) return;
+function createYoutubeFigure(slide, figureClass) {
+  const fig = document.createElement("figure");
+  fig.className = `${figureClass} event-detail-popover-youtube`;
+  const iframe = document.createElement("iframe");
+  iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(slide.videoId)}?rel=0`;
+  iframe.title = slide.title;
+  iframe.loading = "lazy";
+  iframe.setAttribute("allowfullscreen", "");
+  iframe.allow =
+    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+  fig.appendChild(iframe);
+  return fig;
+}
+
+/**
+ * @param {import("./event-rich-details.js").RichSlide} slide
+ * @param {string} figureClass
+ */
+function appendSlideFigure(slide, figureClass) {
+  if (slide.kind === "image") {
+    return createLazyFigure(slide, figureClass);
+  }
+  return createYoutubeFigure(slide, figureClass);
+}
+
+/**
+ * @param {HTMLElement} richEl
+ * @param {import("./event-rich-details.js").RichSlide[]} slides
+ */
+function appendRichMediaBlock(richEl, slides) {
+  if (slides.length === 0) return;
 
   const wrap = document.createElement("div");
   wrap.className = "event-detail-popover-rich-media";
 
-  if (images.length === 1) {
+  if (slides.length === 1) {
     wrap.appendChild(
-      createLazyFigure(images[0], "event-detail-popover-figure event-detail-popover-figure--solo")
+      appendSlideFigure(slides[0], "event-detail-popover-figure event-detail-popover-figure--solo")
     );
     richEl.appendChild(wrap);
     return;
@@ -43,7 +72,7 @@ function appendRichMediaBlock(richEl, images) {
   root.className = "event-detail-popover-slideshow";
   root.setAttribute("role", "region");
   root.setAttribute("aria-roledescription", "carousel");
-  root.setAttribute("aria-label", "Concert photos");
+  root.setAttribute("aria-label", "Concert photos and video");
 
   const viewport = document.createElement("div");
   viewport.className = "event-detail-popover-slides-viewport";
@@ -51,10 +80,10 @@ function appendRichMediaBlock(richEl, images) {
   const track = document.createElement("div");
   track.className = "event-detail-popover-slides-track";
 
-  for (const img of images) {
+  for (const item of slides) {
     const slide = document.createElement("div");
     slide.className = "event-detail-popover-slide";
-    slide.appendChild(createLazyFigure(img, "event-detail-popover-figure"));
+    slide.appendChild(appendSlideFigure(item, "event-detail-popover-figure"));
     track.appendChild(slide);
   }
 
@@ -64,7 +93,7 @@ function appendRichMediaBlock(richEl, images) {
   const prev = document.createElement("button");
   prev.type = "button";
   prev.className = "event-detail-popover-slideshow-btn";
-  prev.setAttribute("aria-label", "Previous image");
+  prev.setAttribute("aria-label", "Previous slide");
   prev.textContent = "‹";
 
   const counter = document.createElement("span");
@@ -74,11 +103,11 @@ function appendRichMediaBlock(richEl, images) {
   const next = document.createElement("button");
   next.type = "button";
   next.className = "event-detail-popover-slideshow-btn";
-  next.setAttribute("aria-label", "Next image");
+  next.setAttribute("aria-label", "Next slide");
   next.textContent = "›";
 
   let index = 0;
-  const n = images.length;
+  const n = slides.length;
 
   const applyIndex = () => {
     index = Math.max(0, Math.min(index, n - 1));
@@ -198,8 +227,42 @@ export function createEventPopover() {
 // -----------------------------------------------------------------------------
 // Popover placement
 // Positions the dialog near the click (or under the anchor if coords missing),
-// clamped so it stays inside the viewport with a small margin.
+// clamped so it stays inside the visible viewport with a small margin.
+// Uses Visual Viewport when available (mobile URL bar / pinch-zoom), and
+// getBoundingClientRect so sizing matches the laid-out box after show.
 // -----------------------------------------------------------------------------
+/** @returns {{ x0: number; y0: number; x1: number; y1: number }} */
+function getVisibleViewportRect() {
+  const vv = window.visualViewport;
+  if (vv) {
+    const x0 = vv.offsetLeft;
+    const y0 = vv.offsetTop;
+    return { x0, y0, x1: x0 + vv.width, y1: y0 + vv.height };
+  }
+  return { x0: 0, y0: 0, x1: window.innerWidth, y1: window.innerHeight };
+}
+
+/** @param {EventPopover} popover */
+function clampPopoverIntoView(popover) {
+  const { el } = popover;
+  const pad = 8;
+  const vis = getVisibleViewportRect();
+  const box = el.getBoundingClientRect();
+  const w = box.width;
+  const h = box.height;
+  if (w < 1 || h < 1) return;
+  let left = box.left;
+  let top = box.top;
+  const minL = vis.x0 + pad;
+  const minT = vis.y0 + pad;
+  const maxL = vis.x1 - pad - w;
+  const maxT = vis.y1 - pad - h;
+  left = Math.max(minL, Math.min(left, maxL));
+  top = Math.max(minT, Math.min(top, maxT));
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+}
+
 /**
  * @param {EventPopover} popover
  * @param {MouseEvent} pointerEvent
@@ -207,20 +270,16 @@ export function createEventPopover() {
  */
 function positionPopoverNearPointer(popover, pointerEvent, anchorEl) {
   const { el } = popover;
-  const pad = 8;
-  const w = el.offsetWidth;
-  const h = el.offsetHeight;
   let left = pointerEvent.clientX;
   let top = pointerEvent.clientY;
   if (!Number.isFinite(left) || !Number.isFinite(top) || (left === 0 && top === 0)) {
-    const rect = anchorEl.getBoundingClientRect();
-    left = rect.left;
-    top = rect.bottom + 4;
+    const anchorRect = anchorEl.getBoundingClientRect();
+    left = anchorRect.left;
+    top = anchorRect.bottom + 4;
   }
-  left = Math.max(pad, Math.min(left, window.innerWidth - pad - w));
-  top = Math.max(pad, Math.min(top, window.innerHeight - pad - h));
   el.style.left = `${left}px`;
   el.style.top = `${top}px`;
+  clampPopoverIntoView(popover);
 }
 
 // -----------------------------------------------------------------------------
@@ -265,7 +324,7 @@ export function showEventPopover(popover, ev, anchorEl, pointerEvent) {
     popover.el.classList.add("event-detail-popover--rich");
     richEl.hidden = false;
 
-    appendRichMediaBlock(richEl, detail.images ?? []);
+    appendRichMediaBlock(richEl, detail.slides ?? []);
 
     if (detail.lead) {
       const lead = document.createElement("p");
@@ -288,6 +347,9 @@ export function showEventPopover(popover, ev, anchorEl, pointerEvent) {
   popover.el.hidden = false;
   requestAnimationFrame(() => {
     positionPopoverNearPointer(popover, pointerEvent, anchorEl);
+    requestAnimationFrame(() => {
+      positionPopoverNearPointer(popover, pointerEvent, anchorEl);
+    });
   });
 }
 
@@ -311,4 +373,13 @@ export function attachPopoverGlobalListeners(popover, onOutsidePointerDown) {
   window.addEventListener("resize", () => {
     if (!popover.el.hidden) hideEventPopover(popover);
   });
+  const vv = window.visualViewport;
+  if (vv) {
+    const onVvChange = () => {
+      if (popover.el.hidden) return;
+      clampPopoverIntoView(popover);
+    };
+    vv.addEventListener("resize", onVvChange);
+    vv.addEventListener("scroll", onVvChange);
+  }
 }

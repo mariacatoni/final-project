@@ -16,10 +16,13 @@ const START_YEAR = 2000;
 const END_YEAR = 2025;
 
 const YEAR_BUCKETS = [
-  { label: "2000s", startYear: 2000, endYear: 2009 },
-  { label: "2010s", startYear: 2010, endYear: 2019 },
-  { label: "2020s", startYear: 2020, endYear: 2025 },
+  { label: "My first show was in 2000", startYear: 2000, endYear: 2009 },
+  { label: "I moved to New York in 2010", startYear: 2010, endYear: 2019 },
+  { label: "2020 was... a year", startYear: 2020, endYear: 2025 },
 ];
+
+/** ISO `YYYY-MM-DD` dates that get an extra ring on the timeline (see `.event-dot--special-date`). */
+const SPECIAL_TIMELINE_DATES = new Set(["2000-04-07", "2007-02-03"]);
 
 // -----------------------------------------------------------------------------
 // Merging and ordering events
@@ -213,6 +216,7 @@ function renderTimelineVertical(rootEl, byYear, popover) {
         const dot = document.createElement("button");
         dot.type = "button";
         dot.className = "event-dot";
+        if (SPECIAL_TIMELINE_DATES.has(ev.date)) dot.classList.add("event-dot--special-date");
         const hoverText = ev.artists.map((a) => a.name).join(", ");
         dot.title = hoverText;
         dot.setAttribute("aria-haspopup", "dialog");
@@ -283,7 +287,7 @@ function main() {
     );
 
     setStatus(
-      `${CONCERT_EVENTS.length} concerts across ${merged.length} concert dates between ${START_YEAR} and ${END_YEAR}. Click a dot for date and artists.`
+      `Between ${START_YEAR} and ${END_YEAR}, I recall seeing ${CONCERT_EVENTS.length} different sets on ${merged.length} concert dates. Click a dot for date and artists.`
     );
   } catch (err) {
     console.error(err);
