@@ -66,10 +66,15 @@ code {
 
 /* Page title, intro paragraph, and status line above the timeline. */
 h1 {
-  margin: 0 0 10px;
+  max-width: var(--timeline-max-width);
+  margin: 0 auto 10px;
+  padding-block: 12px;
+  border-top: 2px solid #401835;
+  border-bottom: 2px solid #401835;
   text-align: center;
-  font-size: clamp(40px, 3.1vw, 80px);
+  font-size: clamp(100px, 3.1vw, 200px);
   letter-spacing: -0.02em;
+  text-shadow: 0.02em 0.02em 0 #9077A1;
 }
 
 .lede {
@@ -78,6 +83,8 @@ h1 {
   text-align: left;
   color: var(--muted);
   line-height: 1.55;
+  padding-top: 24px;
+  padding-bottom: 24px;
 }
 
 .lede a {
@@ -93,8 +100,9 @@ h1 {
   max-width: var(--timeline-max-width);
   text-align: left;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.55;
+  font-style: italic;
 }
 
 /* --- Vertical timeline (decades, years, axis, dots) --- */
@@ -113,6 +121,8 @@ h1 {
   border: none;
   border-top: 4px solid #401835;
   border-bottom: 4px solid #401835;
+  border-left: 0.5px solid #401835;
+  border-right: 0.5px solid #401835;
   background: #F2EDE4;
   padding: 20px 16px 20px;
 }
