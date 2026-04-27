@@ -287,7 +287,7 @@ function main() {
     );
 
     setStatus(
-      `Between ${START_YEAR} and ${END_YEAR}, I recall seeing ${CONCERT_EVENTS.length} different sets on ${merged.length} concert dates. Each circle represents a date. Click a circle for details and setlist links. Outlined circles indicate additional content including stories, images, and videos.`
+      `Between ${START_YEAR} and ${END_YEAR}, I saw ${CONCERT_EVENTS.length} different sets on ${merged.length} concert dates. Each circle represents a date. Click a circle for details and setlist links. Outlined circles indicate additional content including stories, images, and videos.`
     );
   } catch (err) {
     console.error(err);
