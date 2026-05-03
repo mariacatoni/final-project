@@ -1,0 +1,29 @@
+---
+description: Project conventions from INSTRUCTIONS — vanilla JS, file layout, collaboration, visual testing
+alwaysApply: true
+---
+
+# Project instructions
+
+## Stack and dependencies
+
+- Use **vanilla JavaScript only**. No frameworks; no libraries unless explicitly requested.
+- Before adding any external library or dependency, **ask first**.
+
+## Code organization
+
+- Keep **HTML, CSS, and JS in separate files**.
+- Break JavaScript into **clear functions** and **separate files** as needed.
+- **Do not duplicate logic** across the codebase.
+
+## Style and changes
+
+- Write **clean, readable code** with **comments** that explain what each section does.
+- Prefer **simple** solutions over clever ones.
+- When you make a change, **explain what you changed and why**.
+- **Do not refactor** code the user did not ask to refactor.
+- If something is unclear, **say so** instead of guessing.
+
+## Visual changes
+
+- **Test new visual changes in the browser** (e.g. Chrome with MCP when available).

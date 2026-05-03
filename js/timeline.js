@@ -7,6 +7,7 @@ import {
   hideEventPopover,
   attachPopoverGlobalListeners,
 } from "./event-popover.js";
+import { observeReveal } from "./reveal-on-scroll.js";
 
 // -----------------------------------------------------------------------------
 // Timeline range and decade groupings
@@ -127,6 +128,127 @@ const DECADE_DUMMY_BLURBS = [
   "Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida.",
 ];
 
+/**
+ * Polaroid collage per decade: same two placeholder files for every bucket so you can
+ * preview layout; swap `src` (and add files under assets/timeline-photos/) per era when ready.
+ * `photoClass` picks polaroid layout (--a upper, --b lower); keep two entries unless CSS is extended.
+ */
+const DECADE_COLLAGE_CONFIG = [
+  {
+    ariaLabel: "Photos from the 2000s",
+    photos: [
+      {
+        src: "assets/timeline-photos/2000s-1.jpg",
+        alt: "Concert photo for the 2000s section",
+        photoClass: "decade-header-collage__photo--a",
+      },
+      {
+        src: "assets/timeline-photos/2000s-2.jpg",
+        alt: "Second concert photo for the 2000s section",
+        photoClass: "decade-header-collage__photo--b",
+      },
+    ],
+  },
+  {
+    ariaLabel: "Photos from the 2010s",
+    photos: [
+      {
+        src: "assets/timeline-photos/2000s-1.jpg",
+        alt: "Placeholder collage image (replace with a 2010s photo)",
+        photoClass: "decade-header-collage__photo--a",
+      },
+      {
+        src: "assets/timeline-photos/2000s-2.jpg",
+        alt: "Second placeholder collage image (replace with a 2010s photo)",
+        photoClass: "decade-header-collage__photo--b",
+      },
+    ],
+  },
+  {
+    ariaLabel: "Photos from the 2020s",
+    photos: [
+      {
+        src: "assets/timeline-photos/2000s-1.jpg",
+        alt: "Placeholder collage image (replace with a 2020s photo)",
+        photoClass: "decade-header-collage__photo--a",
+      },
+      {
+        src: "assets/timeline-photos/2000s-2.jpg",
+        alt: "Second placeholder collage image (replace with a 2020s photo)",
+        photoClass: "decade-header-collage__photo--b",
+      },
+    ],
+  },
+];
+
+/** Collage wrapper + images for one decade rail (collage grid layout). */
+function createDecadeCollage(ariaLabel, photos) {
+  const collage = document.createElement("div");
+  collage.className = "decade-header-collage";
+  collage.setAttribute("aria-label", ariaLabel);
+  for (const item of photos) {
+    const img = document.createElement("img");
+    img.className = `decade-header-collage__photo ${item.photoClass}`;
+    img.src = item.src;
+    img.alt = item.alt;
+    img.loading = "lazy";
+    img.decoding = "async";
+    collage.appendChild(img);
+  }
+  return collage;
+}
+
+/**
+ * One timeline year row: empty side | axis label | event dots (or mirrored when events are on the left).
+ * @param {number} year
+ * @param {boolean} onRight
+ * @param {ReturnType<typeof groupEventsByYear>} byYear
+ * @param {ReturnType<typeof createEventPopover>} popover
+ */
+function buildYearRow(year, onRight, byYear, popover) {
+  const row = document.createElement("div");
+  row.className = "year-row";
+
+  const leftCell = document.createElement("div");
+  const axisCell = document.createElement("div");
+  const rightCell = document.createElement("div");
+
+  const yearEvents = byYear.get(year) ?? [];
+  const eventsCell = onRight ? rightCell : leftCell;
+  const emptyCell = onRight ? leftCell : rightCell;
+
+  eventsCell.className = `year-side year-side--events ${onRight ? "year-side--right" : "year-side--left"}`;
+  emptyCell.className = "year-side year-side--empty";
+
+  axisCell.className = "year-axis-cell";
+  const yearLabel = document.createElement("span");
+  yearLabel.className = "year-axis-label";
+  yearLabel.textContent = String(year);
+  yearLabel.setAttribute("title", String(year));
+  axisCell.appendChild(yearLabel);
+
+  for (const ev of yearEvents) {
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = "event-dot";
+    if (SPECIAL_TIMELINE_DATES.has(ev.date)) dot.classList.add("event-dot--special-date");
+    const hoverText = ev.artists.map((a) => a.name).join(", ");
+    dot.title = hoverText;
+    dot.setAttribute("aria-haspopup", "dialog");
+    dot.setAttribute("aria-label", `${formatDisplayDate(ev.date)}: ${hoverText}. Click for details.`);
+
+    dot.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showEventPopover(popover, ev, dot, e);
+    });
+
+    eventsCell.appendChild(dot);
+  }
+
+  row.append(leftCell, axisCell, rightCell);
+  return row;
+}
+
 // -----------------------------------------------------------------------------
 // Vertical timeline DOM
 // Renders decade blocks, year rows, central axis labels, and interactive dots that
@@ -151,17 +273,26 @@ function renderTimelineVertical(rootEl, byYear, popover) {
     block.className = "decade-block";
 
     const onRight = decadeEventsOnRight(decadeIndex);
+    const collageCfg = DECADE_COLLAGE_CONFIG[decadeIndex];
+    if (!collageCfg) throw new Error(`Missing DECADE_COLLAGE_CONFIG for decade index ${decadeIndex}`);
 
-    const headerRow = document.createElement("div");
-    headerRow.className = "decade-header-row";
+    /*
+     * Collage sidebar: polaroid rail on the outer edge (left when events are on the right,
+     * right when events are on the left) so the axis and dots never sit under the photos.
+     */
+    block.classList.add("decade-block--collage");
+    if (onRight) block.classList.add("decade-block--collage-rail-start");
+    else block.classList.add("decade-block--collage-rail-end");
 
-    const headerLeft = document.createElement("div");
-    headerLeft.className = "decade-header-side decade-header-side--left";
+    const layout = document.createElement("div");
+    layout.className = "decade-collage-layout";
+
     const headerAxis = document.createElement("div");
     headerAxis.className = "decade-header-axis";
     headerAxis.setAttribute("aria-hidden", "true");
-    const headerRight = document.createElement("div");
-    headerRight.className = "decade-header-side decade-header-side--right";
+
+    const introWrap = document.createElement("div");
+    introWrap.className = "decade-collage-layout__intro decade-header-side decade-header-side--filled";
 
     const headerInner = document.createElement("div");
     headerInner.className = "decade-header-inner";
@@ -175,65 +306,44 @@ function renderTimelineVertical(rootEl, byYear, popover) {
     blurb.textContent = DECADE_DUMMY_BLURBS[decadeIndex] ?? DECADE_DUMMY_BLURBS[0];
 
     headerInner.append(h2, blurb);
+    introWrap.appendChild(headerInner);
+
+    const headerOpposite = document.createElement("div");
+    headerOpposite.className = "decade-header-side decade-header-side--empty";
 
     if (onRight) {
-      headerLeft.classList.add("decade-header-side--filled");
-      headerLeft.appendChild(headerInner);
-      headerRight.classList.add("decade-header-side--empty");
+      introWrap.classList.add("decade-header-side--left");
+      headerOpposite.classList.add("decade-header-side--right");
     } else {
-      headerRight.classList.add("decade-header-side--filled");
-      headerRight.appendChild(headerInner);
-      headerLeft.classList.add("decade-header-side--empty");
+      introWrap.classList.add("decade-header-side--right");
+      headerOpposite.classList.add("decade-header-side--left");
     }
 
-    headerRow.append(headerLeft, headerAxis, headerRight);
-    block.appendChild(headerRow);
+    const rail = document.createElement("div");
+    rail.className = "decade-collage-rail";
+    rail.appendChild(createDecadeCollage(collageCfg.ariaLabel, collageCfg.photos));
 
+    const yearCount = bucket.endYear - bucket.startYear + 1;
+    rail.style.gridRow = `2 / span ${yearCount}`;
+
+    if (onRight) layout.append(introWrap, headerAxis, headerOpposite, rail);
+    else layout.append(headerOpposite, headerAxis, introWrap, rail);
+
+    let gridRow = 2;
     for (let year = bucket.startYear; year <= bucket.endYear; year++) {
-      const row = document.createElement("div");
-      row.className = "year-row";
-
-      const leftCell = document.createElement("div");
-      const axisCell = document.createElement("div");
-      const rightCell = document.createElement("div");
-
-      const yearEvents = byYear.get(year) ?? [];
-
-      const eventsCell = onRight ? rightCell : leftCell;
-      const emptyCell = onRight ? leftCell : rightCell;
-
-      eventsCell.className = `year-side year-side--events ${onRight ? "year-side--right" : "year-side--left"}`;
-      emptyCell.className = "year-side year-side--empty";
-
-      axisCell.className = "year-axis-cell";
-      const yearLabel = document.createElement("span");
-      yearLabel.className = "year-axis-label";
-      yearLabel.textContent = String(year);
-      yearLabel.setAttribute("title", String(year));
-      axisCell.appendChild(yearLabel);
-
-      for (const ev of yearEvents) {
-        const dot = document.createElement("button");
-        dot.type = "button";
-        dot.className = "event-dot";
-        if (SPECIAL_TIMELINE_DATES.has(ev.date)) dot.classList.add("event-dot--special-date");
-        const hoverText = ev.artists.map((a) => a.name).join(", ");
-        dot.title = hoverText;
-        dot.setAttribute("aria-haspopup", "dialog");
-        dot.setAttribute("aria-label", `${formatDisplayDate(ev.date)}: ${hoverText}. Click for details.`);
-
-        dot.addEventListener("click", (e) => {
-          e.stopPropagation();
-          showEventPopover(popover, ev, dot, e);
-        });
-
-        eventsCell.appendChild(dot);
-      }
-
-      row.append(leftCell, axisCell, rightCell);
-      block.appendChild(row);
+      const built = buildYearRow(year, onRight, byYear, popover);
+      const axisCell = built.children[1];
+      const eventsCell = onRight ? built.children[2] : built.children[0];
+      const yearStrip = document.createElement("div");
+      yearStrip.className = "decade-collage-year";
+      yearStrip.style.gridRow = String(gridRow);
+      if (onRight) yearStrip.append(axisCell, eventsCell);
+      else yearStrip.append(eventsCell, axisCell);
+      layout.appendChild(yearStrip);
+      gridRow += 1;
     }
 
+    block.appendChild(layout);
     inner.appendChild(block);
   });
 
@@ -277,6 +387,13 @@ function main() {
     };
 
     renderTimelineVertical(root, byYear, popover);
+
+    // Rise polaroid photos as they enter the viewport; positive bottom rootMargin starts
+    // the reveal slightly earlier so more of the motion happens on-screen.
+    observeReveal(root.querySelectorAll(".decade-header-collage__photo"), {
+      rootMargin: "0px 0px 12% 0px",
+    });
+
     attachPopoverGlobalListeners(popover, onOutsidePointerDown);
     window.addEventListener(
       "scroll",

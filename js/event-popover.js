@@ -345,6 +345,8 @@ export function showEventPopover(popover, ev, anchorEl, pointerEvent) {
   }
 
   popover.el.hidden = false;
+  // Two rAF passes: the first lets the browser paint the popover so it has
+  // real dimensions; the second re-clamps after any layout shift from content.
   requestAnimationFrame(() => {
     positionPopoverNearPointer(popover, pointerEvent, anchorEl);
     requestAnimationFrame(() => {
