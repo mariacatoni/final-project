@@ -367,20 +367,19 @@ h1 {
   box-shadow: 0 12px 28px rgba(50, 46, 52, 0.2);
   object-fit: cover;
   aspect-ratio: 4 / 3;
-  /* Scroll-reveal: same diagonal offset (--reveal-x/--reveal-y) for both, then each photo’s rotation/layout (no fade). */
-  /* Longer duration + soft ease-out so the rise into place feels gradual, not snappy. */
-  transition: transform 1.65s cubic-bezier(0.22, 1, 0.36, 1);
+  /* Scroll-scrub: JS sets --reveal-progress 0→1. Per-photo --reveal-start-* sets direction from below. */
+  --reveal-progress: 0;
+  --reveal-start-x: 0px;
+  --reveal-start-y: 88px;
+  --reveal-x: calc((1 - var(--reveal-progress, 0)) * var(--reveal-start-x));
+  --reveal-y: calc((1 - var(--reveal-progress, 0)) * var(--reveal-start-y));
   will-change: transform;
 }
 
-.decade-block--collage .decade-collage-rail .decade-header-collage__photo:not(.is-revealed) {
-  /* Shared start: diagonal offset (down + right in page space); larger values = stronger scroll-in. */
-  --reveal-x: 40px;
-  --reveal-y: 92px;
-}
-
-/* Upper polaroid: larger, breaks past the outer card edge; natural ratio (no 4:3 crop). */
+/* Upper polaroid: in from below-left (outer edge of left rail). */
 .decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--a {
+  --reveal-start-x: -76px;
+  --reveal-start-y: 112px;
   top: 8px;
   left: -32px;
   right: auto;
@@ -395,8 +394,10 @@ h1 {
   transform-origin: 72% 12%;
 }
 
-/* Lower polaroid: inner edge of rail (near axis). */
+/* Lower polaroid: in from below-right (toward the axis). */
 .decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--b {
+  --reveal-start-x: 64px;
+  --reveal-start-y: 96px;
   left: auto;
   right: 0;
   bottom: 4px;
@@ -407,8 +408,10 @@ h1 {
   transform-origin: 90% 92%;
 }
 
-/* Mirror layout (rail on the right): flip horizontal placement + mirrored scroll nudge. */
+/* Mirror layout (rail on the right): opposite horizontal paths so motion stays “from the bottom” in page space. */
 .decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--a {
+  --reveal-start-x: 76px;
+  --reveal-start-y: 112px;
   top: 8px;
   left: auto;
   right: -32px;
@@ -419,29 +422,27 @@ h1 {
   height: auto;
   aspect-ratio: auto;
   object-fit: contain;
-  transform: translate(calc(-1 * var(--reveal-x, 0px)), var(--reveal-y, 0px)) rotate(5deg) translateX(14px);
+  transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) rotate(5deg) translateX(14px);
   transform-origin: 28% 12%;
 }
 
 .decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--b {
+  --reveal-start-x: -64px;
+  --reveal-start-y: 96px;
   right: auto;
   left: 0;
   bottom: 4px;
   top: auto;
   z-index: 3;
   width: clamp(245px, 88.2%, 367px);
-  transform: translate(calc(-1 * var(--reveal-x, 0px)), var(--reveal-y, 0px)) rotate(-6deg);
+  transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) rotate(-6deg);
   transform-origin: 10% 92%;
 }
 
-/* Honor user motion preference: photos appear instantly, no slide. */
+/* Honor user motion preference: photos stay in final pose, no scroll-driven offset. */
 @media (prefers-reduced-motion: reduce) {
   .decade-block--collage .decade-collage-rail .decade-header-collage__photo {
-    transition: none;
-  }
-  .decade-block--collage .decade-collage-rail .decade-header-collage__photo:not(.is-revealed) {
-    --reveal-x: 0px;
-    --reveal-y: 0px;
+    --reveal-progress: 1;
   }
 }
 

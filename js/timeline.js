@@ -7,7 +7,7 @@ import {
   hideEventPopover,
   attachPopoverGlobalListeners,
 } from "./event-popover.js";
-import { observeReveal } from "./reveal-on-scroll.js";
+import { bindScrollRevealGrouped } from "./reveal-on-scroll.js";
 
 // -----------------------------------------------------------------------------
 // Timeline range and decade groupings
@@ -388,10 +388,12 @@ function main() {
 
     renderTimelineVertical(root, byYear, popover);
 
-    // Rise polaroid photos as they enter the viewport; positive bottom rootMargin starts
-    // the reveal slightly earlier so more of the motion happens on-screen.
-    observeReveal(root.querySelectorAll(".decade-header-collage__photo"), {
-      rootMargin: "0px 0px 12% 0px",
+    // Polaroid offset scrubs with scroll: one progress value per decade collage so both
+    // photos finish together (see --reveal-progress in style.css).
+    bindScrollRevealGrouped(root.querySelectorAll(".decade-header-collage"), ".decade-header-collage__photo", {
+      startViewportRatio: 0.88,
+      // Higher endViewportRatio = full pose after less scroll (narrower 0→1 band vs viewport).
+      endViewportRatio: 0.58,
     });
 
     attachPopoverGlobalListeners(popover, onOutsidePointerDown);
