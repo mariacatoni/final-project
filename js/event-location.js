@@ -4,6 +4,8 @@
 
 /** Hyphenated city slugs that appear before the state token in setlist.fm paths. */
 const MULTI_TOKEN_CITIES = [
+  "west-palm-beach",
+  "salt-lake-city",
   "los-angeles",
   "las-vegas",
   "east-rutherford",
@@ -16,17 +18,8 @@ const MULTI_TOKEN_CITIES = [
   "st-louis",
   "el-monte",
   "fort-lauderdale",
-  "salt-lake-city",
   "kansas-city",
-  "west-palm-beach",
 ];
-
-MULTI_TOKEN_CITIES.sort((a, b) => {
-  const na = a.split("-").length;
-  const nb = b.split("-").length;
-  if (nb !== na) return nb - na;
-  return b.length - a.length;
-});
 
 /** @param {string} slug */
 function titleCaseWords(slug) {
@@ -42,7 +35,7 @@ function titleCaseWords(slug) {
  * @param {string | undefined} url
  * @returns {{ venue: string; city: string; state: string } | null}
  */
-export function parseSetlistFmLocation(url) {
+function parseSetlistFmLocation(url) {
   if (!url || typeof url !== "string") return null;
   const m = url.match(/setlist\.fm\/setlist\/[^/]+\/\d{4}\/(.+)\.html$/i);
   if (!m) return null;

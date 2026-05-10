@@ -281,26 +281,20 @@ function createDecadeCollage(ariaLabel, photos, artistToYears) {
 }
 
 /**
- * One timeline year row: empty side | axis label | event dots (or mirrored when events are on the left).
+ * One timeline year strip: axis label + event dots, mirrored when events are on the left.
  * @param {number} year
  * @param {boolean} onRight
  * @param {ReturnType<typeof groupEventsByYear>} byYear
  * @param {ReturnType<typeof createEventPopover>} popover
+ * @returns {{ axisCell: HTMLDivElement; eventsCell: HTMLDivElement }}
  */
-function buildYearRow(year, onRight, byYear, popover) {
-  const row = document.createElement("div");
-  row.className = "year-row";
-
-  const leftCell = document.createElement("div");
+function buildYearCells(year, onRight, byYear, popover) {
   const axisCell = document.createElement("div");
-  const rightCell = document.createElement("div");
+  const eventsCell = document.createElement("div");
 
   const yearEvents = byYear.get(year) ?? [];
-  const eventsCell = onRight ? rightCell : leftCell;
-  const emptyCell = onRight ? leftCell : rightCell;
 
   eventsCell.className = `year-side year-side--events ${onRight ? "year-side--right" : "year-side--left"}`;
-  emptyCell.className = "year-side year-side--empty";
 
   axisCell.className = "year-axis-cell";
   const yearLabel = document.createElement("span");
@@ -327,8 +321,7 @@ function buildYearRow(year, onRight, byYear, popover) {
     eventsCell.appendChild(dot);
   }
 
-  row.append(leftCell, axisCell, rightCell);
-  return row;
+  return { axisCell, eventsCell };
 }
 
 // -----------------------------------------------------------------------------
@@ -441,9 +434,7 @@ function renderTimelineVertical(rootEl, byYear, popover, artistToYears) {
 
     let gridRow = 2;
     for (let year = bucket.startYear; year <= bucket.endYear; year++) {
-      const built = buildYearRow(year, onRight, byYear, popover);
-      const axisCell = built.children[1];
-      const eventsCell = onRight ? built.children[2] : built.children[0];
+      const { axisCell, eventsCell } = buildYearCells(year, onRight, byYear, popover);
       const yearStrip = document.createElement("div");
       yearStrip.className = "decade-collage-year";
       yearStrip.style.gridRow = String(gridRow);

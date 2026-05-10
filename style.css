@@ -112,10 +112,9 @@ code {
   font-size: 0.95em;
 }
 
-/* Main layout: centered column for header, content, and footer. */
+/* Main layout: centered column for header and content. */
 .page-header,
-.page-main,
-.page-footer {
+.page-main {
   width: min(1200px, calc(100% - 32px));
   margin: 0 auto;
 }
@@ -125,14 +124,7 @@ code {
 }
 
 .page-main {
-  padding: 10px 0 28px;
-}
-
-.page-footer {
-  padding: 0 0 28px;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.5;
+  padding: 10px 0 56px;
 }
 
 /* Page title, intro paragraph, and status line above the timeline. */
@@ -293,13 +285,6 @@ h1 {
 
 /* --- Vertical timeline (decades, years, axis, dots) --- */
 
-/* Wrapper that separates the timeline from the intro with spacing and a top rule. */
-.vertical-timeline-block {
-  margin-top: 36px;
-  padding-top: 28px;
-  border-top: 1px solid var(--border);
-}
-
 /* Timeline “card”: thick top/bottom border on the outside, gap, then thin border on the wrap (next to content). */
 .timeline-vertical-root {
   max-width: var(--timeline-max-width);
@@ -354,19 +339,6 @@ h1 {
   flex-direction: column;
   gap: 0;
   overflow-x: visible;
-}
-
-/* Three-column grid: left blurb | center axis gutter | right blurb (decade titles/copy). */
-.decade-header-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr);
-  align-items: start;
-  padding-bottom: 10px;
-}
-
-.decade-block:not(:first-child) .decade-header-row {
-  margin-top: 12px;
-  padding-top: 18px;
 }
 
 /* Center column of the decade header (reserved for alignment with the year axis). */
@@ -671,18 +643,6 @@ h1 {
   transform-origin: 90% 92%;
 }
 
-/* Middle polaroid (optional third photo): inset from outer rail edge vs --a so edges don’t hug the top photo. */
-.decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--c {
-  top: 46%;
-  left: 30px;
-  right: auto;
-  bottom: auto;
-  z-index: 2;
-  width: clamp(190px, 60%, 268px);
-  transform: rotate(-2.5deg);
-  transform-origin: 48% 42%;
-}
-
 /* --- Era 2010 (rail-end): scrapbook diagonal — band (a, back), DJ over top’s lower-right (c), piano over middle’s lower-left (b) --- */
 .decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--a {
   top: 6px;
@@ -759,30 +719,6 @@ h1 {
   transform-origin: 90% 92%;
 }
 
-.decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--c {
-  top: 46%;
-  left: 30px;
-  right: auto;
-  bottom: auto;
-  z-index: 2;
-  width: clamp(190px, 60%, 268px);
-  transform: rotate(-2.5deg);
-  transform-origin: 48% 42%;
-}
-
-/* Single year row: same 3-column grid as the decade header — events | year pill | events. */
-.year-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr);
-  align-items: stretch;
-  min-height: 44px;
-}
-
-/* Extra vertical rhythm between consecutive year labels (same decade). */
-.decade-block > .year-row + .year-row {
-  margin-top: 16px;
-}
-
 /* Left/right columns: flex rows of event dots, aligned toward the center axis. */
 .year-side {
   display: flex;
@@ -810,10 +746,6 @@ h1 {
 
 .year-side--events.year-side--right {
   padding-left: 22px;
-}
-
-.year-side--empty {
-  pointer-events: none;
 }
 
 /* Middle cell: centers the year label on the vertical axis. */
@@ -1150,11 +1082,6 @@ h1 {
 
 /* Narrow screens: slightly tighter grid gutters and timeline card padding. */
 @media (max-width: 720px) {
-  .year-row,
-  .decade-header-row {
-    grid-template-columns: minmax(0, 1fr) 58px minmax(0, 1fr);
-  }
-
   .year-side--left {
     padding-right: 6px;
   }
@@ -1268,17 +1195,6 @@ h1 {
     transform-origin: 90% 92%;
   }
 
-  .decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--c {
-    transform: rotate(-2deg);
-    width: clamp(165px, 55%, 248px);
-    top: 42%;
-    left: 22px;
-    right: auto;
-    bottom: auto;
-    z-index: 2;
-    transform-origin: 48% 42%;
-  }
-
   .decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--a {
     transform: rotate(-4deg) translateX(8px);
     top: 6px;
@@ -1342,67 +1258,6 @@ h1 {
     transform-origin: 90% 92%;
   }
 
-  .decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--c {
-    transform: rotate(-2deg);
-    width: clamp(165px, 55%, 248px);
-    top: 42%;
-    left: 22px;
-    right: auto;
-    bottom: auto;
-    z-index: 2;
-    transform-origin: 48% 42%;
-  }
-}
-
-/* Fixed “next section” control: advances through intro + decade blocks, wraps to top. */
-.section-scroll-next {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: max(20px, env(safe-area-inset-bottom, 0px));
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  padding: 0;
-  margin: 0;
-  border: 2px solid var(--border);
-  border-radius: 50%;
-  background: var(--bg);
-  color: var(--dot);
-  box-shadow: var(--shadow);
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
-}
-
-.section-scroll-next:hover {
-  color: var(--dot-hover);
-  border-color: color-mix(in srgb, var(--dot) 35%, var(--border));
-}
-
-.section-scroll-next:focus-visible {
-  outline: 3px solid rgba(47, 111, 237, 0.45);
-  outline-offset: 3px;
-}
-
-.section-scroll-next__icon {
-  display: block;
-  transform: translateY(1px);
-  transition: transform 0.25s ease;
-}
-
-/* Point up when the next action is “back to top”. */
-.section-scroll-next.section-scroll-next--back-top .section-scroll-next__icon {
-  transform: translateY(1px) rotate(180deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .section-scroll-next,
-  .section-scroll-next__icon {
-    transition: none;
-  }
 }
 
 /* --------------------------------------------------------------------------

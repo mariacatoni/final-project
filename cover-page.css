@@ -52,8 +52,18 @@
   display: flex;
   flex-direction: column;
   background: rgba(242, 237, 228, 0.72);
-  border: 1px solid rgba(64, 24, 53, 0.25);
-  box-shadow: 0 14px 40px rgba(50, 46, 52, 0.12);
+  /* Timeline-style double frame, contained to this text box only.
+     Outer stroke matches .timeline-vertical-root; inset 1px lines via
+     box-shadow mirror .timeline-vertical-wrap so we don't need a wrapper. */
+  border: none;
+  border-top: 4px solid #401835;
+  border-bottom: 4px solid #401835;
+  border-left: 0.5px solid #401835;
+  border-right: 0.5px solid #401835;
+  box-shadow:
+    inset 0 21px 0 -20px #401835,
+    inset 0 -21px 0 -20px #401835,
+    0 14px 40px rgba(50, 46, 52, 0.12);
   backdrop-filter: blur(5px);
   pointer-events: auto;
 }
@@ -63,6 +73,9 @@
   padding-block: 10px;
   font-size: clamp(2rem, 6vw, 4.5rem);
   max-width: none;
+  /* Thin rules above/below the title, same stroke as .timeline-vertical-wrap. */
+  border-top: 1px solid #401835;
+  border-bottom: 1px solid #401835;
 }
 
 .cover-page .cover-page__overlay .lede {

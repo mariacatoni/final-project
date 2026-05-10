@@ -64,9 +64,7 @@ function appendRichMediaBlock(richEl, slides) {
   wrap.className = "event-detail-popover-rich-media";
 
   if (slides.length === 1) {
-    wrap.appendChild(
-      appendSlideFigure(slides[0], "event-detail-popover-figure event-detail-popover-figure--solo")
-    );
+    wrap.appendChild(appendSlideFigure(slides[0], "event-detail-popover-figure"));
     richEl.appendChild(wrap);
     return;
   }
@@ -165,7 +163,7 @@ export function formatDisplayDate(isoDate) {
 // focus on close). hideEventPopover hides the dialog; createEventPopover builds
 // the markup (header, scroll area, artist list, rich region) and wires the close control.
 // -----------------------------------------------------------------------------
-/** @typedef {{ el: HTMLDivElement; headerEl: HTMLDivElement; dateEl: HTMLParagraphElement; listEl: HTMLParagraphElement; locationEl: HTMLParagraphElement; richEl: HTMLDivElement; closeBtn: HTMLButtonElement; scrollEl: HTMLDivElement }} EventPopover */
+/** @typedef {{ el: HTMLDivElement; dateEl: HTMLParagraphElement; listEl: HTMLParagraphElement; locationEl: HTMLParagraphElement; richEl: HTMLDivElement }} EventPopover */
 
 /** @type {HTMLButtonElement | null} */
 let activeDotEl = null;
@@ -220,7 +218,7 @@ export function createEventPopover() {
   el.append(headerEl, scrollEl);
 
   /** @type {EventPopover} */
-  const popover = { el, headerEl, dateEl, listEl, locationEl, richEl, closeBtn, scrollEl };
+  const popover = { el, dateEl, listEl, locationEl, richEl };
   const onClose = (e) => {
     e.preventDefault();
     e.stopPropagation();
