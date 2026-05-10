@@ -88,6 +88,18 @@ body:has(#cover-page:not([hidden]))::before {
   background: color-mix(in srgb, var(--bg, #f4e3ff) 62%, transparent);
 }
 
+/* No document scrolling past the cover until “View timeline” — keeps the intro intentional. */
+html:has(#cover-page:not([hidden])) {
+  height: 100%;
+  overflow: hidden;
+}
+
+body:has(#cover-page:not([hidden])) {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 /* Stack all body sections above the decorative layers */
 body > * {
   position: relative;

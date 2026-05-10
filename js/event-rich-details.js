@@ -192,11 +192,6 @@ export const EVENT_RICH_DETAILS = {
       },
       {
         kind: "image",
-        src: "assets/2022-08-27/20220827-2.jpg",
-        alt: "Bad Bunny tour, Yankee Stadium, August 27, 2022",
-      },
-      {
-        kind: "image",
         src: "assets/2022-08-27/20220827-3.jpg",
         alt: "Bad Bunny tour, Yankee Stadium, August 27, 2022",
       },

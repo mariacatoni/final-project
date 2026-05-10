@@ -12,6 +12,7 @@
     coverEl.setAttribute("aria-hidden", "true");
     if ("inert" in coverEl) coverEl.inert = true;
     btn.disabled = true;
+    window.scrollTo(0, 0);
 
     const timeline = document.getElementById("timeline-vertical");
     if (timeline instanceof HTMLElement) {
