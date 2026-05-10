@@ -8,7 +8,7 @@ import {
   attachPopoverGlobalListeners,
 } from "./event-popover.js";
 import { locationFromEventRow, hasAnyLocation } from "./event-location.js";
-import { createPhotoLightbox, openPhotoLightbox } from "./photo-lightbox.js";
+import { attachCollagePlayButton } from "./timeline-photo-audio.js";
 import { EVENT_RICH_DETAILS } from "./event-rich-details.js";
 
 // -----------------------------------------------------------------------------
@@ -130,33 +130,6 @@ function groupEventsByYear(events) {
   return byYear;
 }
 
-/**
- * Distinct timeline years per artist (merged events: same-night bills count each artist once per year).
- * @param {ReturnType<typeof mergeEventsByDate>} merged
- * @returns {Map<string, number[]>}
- */
-function buildArtistToYears(merged) {
-  /** @type {Map<string, Set<number>>} */
-  const sets = new Map();
-  for (const ev of merged) {
-    if (!clampYear(ev.year)) continue;
-    for (const a of ev.artists) {
-      let s = sets.get(a.name);
-      if (!s) {
-        s = new Set();
-        sets.set(a.name, s);
-      }
-      s.add(ev.year);
-    }
-  }
-  /** @type {Map<string, number[]>} */
-  const out = new Map();
-  for (const [name, yearSet] of sets) {
-    out.set(name, [...yearSet].sort((x, y) => x - y));
-  }
-  return out;
-}
-
 // -----------------------------------------------------------------------------
 // Decade layout helpers
 // Alternates which side of the central axis holds events vs empty space; placeholder
@@ -177,6 +150,7 @@ const DECADE_DUMMY_BLURBS = [
  * Polaroid collage per decade: same two placeholder files for every bucket so you can
  * preview layout; swap `src` (and add files under assets/timeline-photos/) per era when ready.
  * `photoClass` picks polaroid layout (--a upper, --b lower, optional --c middle overlap); use two or three entries per era as needed.
+ * Optional `songTitle` + `artist` appear as text above the play control on hover (see `.decade-header-collage__track-label`).
  */
 const DECADE_COLLAGE_CONFIG = [
   {
@@ -186,12 +160,14 @@ const DECADE_COLLAGE_CONFIG = [
         src: "assets/timeline-photos/2000s-1.jpg",
         alt: "Concert photo for the 2000s section",
         photoClass: "decade-header-collage__photo--a",
+        songTitle: "Promises",
         artist: "The Cranberries",
       },
       {
         src: "assets/timeline-photos/2000s-2.jpg",
         alt: "Second concert photo for the 2000s section",
         photoClass: "decade-header-collage__photo--b",
+        songTitle: "THE FINAL",
         artist: "Dir en grey",
       },
     ],
@@ -203,18 +179,21 @@ const DECADE_COLLAGE_CONFIG = [
         src: "assets/timeline-photos/2010s-1.jpg",
         alt: "Concert photo for the 2010s section",
         photoClass: "decade-header-collage__photo--a",
+        songTitle: "Ibara no Namida",
         artist: "L'arc-en-Ciel",
       },
       {
         src: "assets/timeline-photos/2010s-3.jpg",
         alt: "Second concert photo for the 2010s section",
         photoClass: "decade-header-collage__photo--b",
+        songTitle: "Dance In The Dark",
         artist: "Lady Gaga",
       },
       {
         src: "assets/timeline-photos/2010s-2.jpg",
         alt: "Third concert photo for the 2010s section",
         photoClass: "decade-header-collage__photo--c",
+        songTitle: "Tricky Tricky",
         artist: "Royksopp",
       },
     ],
@@ -226,56 +205,90 @@ const DECADE_COLLAGE_CONFIG = [
         src: "assets/timeline-photos/2020s-1.jpg",
         alt: "Concert photo for the 2020s section",
         photoClass: "decade-header-collage__photo--a",
+        songTitle: "visions",
         artist: "Charli XCX",
       },
       {
         src: "assets/timeline-photos/2020s-2.jpg",
         alt: "Second concert photo for the 2020s section",
         photoClass: "decade-header-collage__photo--b",
-        artist: "Bad Bunny",
+        songTitle: "TOMBOY",
+        artist: "i-dle",
       },
     ],
   },
 ];
 
 /**
+ * Hover tooltip for a polaroid: "Song" by Band (typographic quotes). Omit empty parts.
+ * @param {string | undefined} songTitle
+ * @param {string | undefined} artist
+ */
+function formatCollagePhotoTooltip(songTitle, artist) {
+  const s = typeof songTitle === "string" ? songTitle.trim() : "";
+  const a = typeof artist === "string" ? artist.trim() : "";
+  if (s !== "" && a !== "") {
+    return `\u201C${s}\u201D by ${a}`;
+  }
+  if (s !== "") {
+    return `\u201C${s}\u201D`;
+  }
+  if (a !== "") {
+    return `Audio: ${a}`;
+  }
+  return "";
+}
+
+/**
  * Collage wrapper + images for one decade rail (collage grid layout).
  * @param {string} ariaLabel
  * @param {typeof DECADE_COLLAGE_CONFIG[number]["photos"]} photos
- * @param {Map<string, number[]>} artistToYears
  */
-function createDecadeCollage(ariaLabel, photos, artistToYears) {
+function createDecadeCollage(ariaLabel, photos) {
   const collage = document.createElement("div");
   collage.className = "decade-header-collage";
   collage.setAttribute("aria-label", ariaLabel);
   for (const item of photos) {
+    const wrap = document.createElement("div");
+    wrap.className = `decade-header-collage__photo-wrap ${item.photoClass}`;
+    const trackLabelText = formatCollagePhotoTooltip(item.songTitle, item.artist);
+
     const img = document.createElement("img");
-    img.className = `decade-header-collage__photo ${item.photoClass}`;
+    img.className = "decade-header-collage__photo";
     img.src = item.src;
     img.alt = item.alt;
     img.loading = "lazy";
     img.decoding = "async";
-    // Make each photo behave like a button: clickable, keyboard-focusable,
-    // and announced as a button to assistive tech. Activates the lightbox.
-    img.setAttribute("role", "button");
-    img.tabIndex = 0;
-    img.style.cursor = "zoom-in";
-    const open = () => {
-      const name = typeof item.artist === "string" ? item.artist.trim() : "";
-      const caption =
-        name !== ""
-          ? { artist: name, years: artistToYears.get(name) ?? [] }
-          : undefined;
-      openPhotoLightbox(item.src, item.alt, img, caption);
-    };
-    img.addEventListener("click", open);
-    img.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        open();
-      }
-    });
-    collage.appendChild(img);
+
+    const controls = document.createElement("div");
+    controls.className = "decade-header-collage__controls";
+
+    const trackLabelId =
+      trackLabelText !== "" ? `collage-track-${item.src.replace(/[^a-z0-9]+/gi, "-")}` : "";
+
+    if (trackLabelText !== "") {
+      const labelEl = document.createElement("span");
+      labelEl.id = trackLabelId;
+      labelEl.className = "decade-header-collage__track-label";
+      labelEl.textContent = trackLabelText;
+      controls.appendChild(labelEl);
+    }
+
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.className = "decade-header-collage__play";
+    playBtn.dataset.photoSrc = item.src;
+    playBtn.setAttribute("aria-label", "Play audio clip for this photo");
+    playBtn.textContent = "\u25B6";
+    if (trackLabelId !== "") {
+      playBtn.setAttribute("aria-describedby", trackLabelId);
+    }
+
+    attachCollagePlayButton(playBtn, item.src);
+
+    controls.appendChild(playBtn);
+    wrap.append(img, controls);
+    collage.appendChild(wrap);
   }
   return collage;
 }
@@ -333,9 +346,8 @@ function buildYearCells(year, onRight, byYear, popover) {
  * @param {HTMLElement} rootEl
  * @param {ReturnType<typeof groupEventsByYear>} byYear
  * @param {ReturnType<typeof createEventPopover>} popover
- * @param {Map<string, number[]>} artistToYears
  */
-function renderTimelineVertical(rootEl, byYear, popover, artistToYears) {
+function renderTimelineVertical(rootEl, byYear, popover) {
   rootEl.replaceChildren();
 
   const wrap = document.createElement("div");
@@ -424,7 +436,7 @@ function renderTimelineVertical(rootEl, byYear, popover, artistToYears) {
 
     const rail = document.createElement("div");
     rail.className = "decade-collage-rail";
-    rail.appendChild(createDecadeCollage(collageCfg.ariaLabel, collageCfg.photos, artistToYears));
+    rail.appendChild(createDecadeCollage(collageCfg.ariaLabel, collageCfg.photos));
 
     const yearCount = bucket.endYear - bucket.startYear + 1;
     rail.style.gridRow = `2 / span ${yearCount}`;
@@ -538,14 +550,9 @@ function main() {
   try {
     const merged = mergeEventsByDate(CONCERT_EVENTS);
     const byYear = groupEventsByYear(merged);
-    const artistToYears = buildArtistToYears(merged);
 
     const popover = createEventPopover();
     document.body.appendChild(popover.el);
-
-    // Build the shared photo lightbox once so the <dialog> is mounted before any
-    // collage photo is clicked. Subsequent calls to openPhotoLightbox reuse it.
-    createPhotoLightbox();
 
     const onOutsidePointerDown = (e) => {
       if (popover.el.hidden) return;
@@ -556,7 +563,7 @@ function main() {
       hideEventPopover(popover);
     };
 
-    renderTimelineVertical(root, byYear, popover, artistToYears);
+    renderTimelineVertical(root, byYear, popover);
 
     attachPopoverGlobalListeners(popover, onOutsidePointerDown);
     window.addEventListener(

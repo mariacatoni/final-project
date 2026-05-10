@@ -352,6 +352,7 @@ export function showEventPopover(popover, ev, anchorEl, pointerEvent) {
       p.textContent = text;
       richEl.appendChild(p);
     }
+
   } else {
     popover.el.classList.remove("event-detail-popover--rich");
     richEl.hidden = true;
