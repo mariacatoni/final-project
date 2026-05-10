@@ -7,7 +7,9 @@ import {
   hideEventPopover,
   attachPopoverGlobalListeners,
 } from "./event-popover.js";
-import { bindScrollRevealGrouped } from "./reveal-on-scroll.js";
+import { locationFromEventRow, hasAnyLocation } from "./event-location.js";
+import { createPhotoLightbox, openPhotoLightbox } from "./photo-lightbox.js";
+import { EVENT_RICH_DETAILS } from "./event-rich-details.js";
 
 // -----------------------------------------------------------------------------
 // Timeline range and decade groupings
@@ -17,13 +19,16 @@ const START_YEAR = 2000;
 const END_YEAR = 2025;
 
 const YEAR_BUCKETS = [
-  { label: "My first show was in 2000", startYear: 2000, endYear: 2009 },
-  { label: "I moved to New York in 2010", startYear: 2010, endYear: 2019 },
-  { label: "2020 was... a year", startYear: 2020, endYear: 2025 },
+  { eraLabel: "2000s", label: "My first show was in 2000", startYear: 2000, endYear: 2009 },
+  { eraLabel: "2010s", label: "I moved to New York in 2010", startYear: 2010, endYear: 2019 },
+  { eraLabel: "2020s", label: "2020 was... a year", startYear: 2020, endYear: 2025 },
 ];
 
-/** ISO `YYYY-MM-DD` dates that get an extra ring on the timeline (see `.event-dot--special-date`). */
-const SPECIAL_TIMELINE_DATES = new Set(["2000-04-07", "2007-02-03"]);
+/** Set to `true` to put the decade heading on one side of the axis and the paragraph on the other; `false` restores the stacked title + copy in one column. */
+const SPLIT_DECADE_HEADING_AND_BLURB = true;
+
+/** ISO `YYYY-MM-DD` dates with rich popup content get an extra ring (see `.event-dot--special-date`). */
+const RICH_DETAIL_DATES = new Set(Object.keys(EVENT_RICH_DETAILS));
 
 // -----------------------------------------------------------------------------
 // Merging and ordering events
@@ -44,7 +49,7 @@ function compareMergedEvents(a, b) {
  * @param {typeof CONCERT_EVENTS} events
  */
 function mergeEventsByDate(events) {
-  /** @type {Map<string, {date: string, year: number, artists: { name: string; setlist?: string }[], sortKey: number}>} */
+  /** @type {Map<string, {date: string, year: number, artists: { name: string; setlist?: string }[], sortKey: number, venue: string, city: string, state: string}>} */
   const groups = new Map();
 
   for (const e of events) {
@@ -55,16 +60,29 @@ function mergeEventsByDate(events) {
 
     const existing = groups.get(key);
     if (!existing) {
+      const loc = locationFromEventRow(e);
       groups.set(key, {
         date: e.date,
         year: e.year,
         artists: [setlist ? { name, setlist } : { name }],
         sortKey: e.sortKey,
+        venue: loc.venue,
+        city: loc.city,
+        state: loc.state,
       });
       continue;
     }
 
     existing.sortKey = Math.min(existing.sortKey, e.sortKey);
+
+    if (!hasAnyLocation(existing)) {
+      const loc = locationFromEventRow(e);
+      if (hasAnyLocation(loc)) {
+        existing.venue = loc.venue;
+        existing.city = loc.city;
+        existing.state = loc.state;
+      }
+    }
 
     const i = existing.artists.findIndex((a) => a.name === name);
     if (i === -1) {
@@ -112,6 +130,33 @@ function groupEventsByYear(events) {
   return byYear;
 }
 
+/**
+ * Distinct timeline years per artist (merged events: same-night bills count each artist once per year).
+ * @param {ReturnType<typeof mergeEventsByDate>} merged
+ * @returns {Map<string, number[]>}
+ */
+function buildArtistToYears(merged) {
+  /** @type {Map<string, Set<number>>} */
+  const sets = new Map();
+  for (const ev of merged) {
+    if (!clampYear(ev.year)) continue;
+    for (const a of ev.artists) {
+      let s = sets.get(a.name);
+      if (!s) {
+        s = new Set();
+        sets.set(a.name, s);
+      }
+      s.add(ev.year);
+    }
+  }
+  /** @type {Map<string, number[]>} */
+  const out = new Map();
+  for (const [name, yearSet] of sets) {
+    out.set(name, [...yearSet].sort((x, y) => x - y));
+  }
+  return out;
+}
+
 // -----------------------------------------------------------------------------
 // Decade layout helpers
 // Alternates which side of the central axis holds events vs empty space; placeholder
@@ -131,7 +176,7 @@ const DECADE_DUMMY_BLURBS = [
 /**
  * Polaroid collage per decade: same two placeholder files for every bucket so you can
  * preview layout; swap `src` (and add files under assets/timeline-photos/) per era when ready.
- * `photoClass` picks polaroid layout (--a upper, --b lower); keep two entries unless CSS is extended.
+ * `photoClass` picks polaroid layout (--a upper, --b lower, optional --c middle overlap); use two or three entries per era as needed.
  */
 const DECADE_COLLAGE_CONFIG = [
   {
@@ -141,11 +186,13 @@ const DECADE_COLLAGE_CONFIG = [
         src: "assets/timeline-photos/2000s-1.jpg",
         alt: "Concert photo for the 2000s section",
         photoClass: "decade-header-collage__photo--a",
+        artist: "The Cranberries",
       },
       {
         src: "assets/timeline-photos/2000s-2.jpg",
         alt: "Second concert photo for the 2000s section",
         photoClass: "decade-header-collage__photo--b",
+        artist: "Dir en grey",
       },
     ],
   },
@@ -153,14 +200,22 @@ const DECADE_COLLAGE_CONFIG = [
     ariaLabel: "Photos from the 2010s",
     photos: [
       {
-        src: "assets/timeline-photos/2000s-1.jpg",
-        alt: "Placeholder collage image (replace with a 2010s photo)",
+        src: "assets/timeline-photos/2010s-1.jpg",
+        alt: "Concert photo for the 2010s section",
         photoClass: "decade-header-collage__photo--a",
+        artist: "L'arc-en-Ciel",
       },
       {
-        src: "assets/timeline-photos/2000s-2.jpg",
-        alt: "Second placeholder collage image (replace with a 2010s photo)",
+        src: "assets/timeline-photos/2010s-3.jpg",
+        alt: "Second concert photo for the 2010s section",
         photoClass: "decade-header-collage__photo--b",
+        artist: "Lady Gaga",
+      },
+      {
+        src: "assets/timeline-photos/2010s-2.jpg",
+        alt: "Third concert photo for the 2010s section",
+        photoClass: "decade-header-collage__photo--c",
+        artist: "Royksopp",
       },
     ],
   },
@@ -168,21 +223,28 @@ const DECADE_COLLAGE_CONFIG = [
     ariaLabel: "Photos from the 2020s",
     photos: [
       {
-        src: "assets/timeline-photos/2000s-1.jpg",
-        alt: "Placeholder collage image (replace with a 2020s photo)",
+        src: "assets/timeline-photos/2020s-1.jpg",
+        alt: "Concert photo for the 2020s section",
         photoClass: "decade-header-collage__photo--a",
+        artist: "Charli XCX",
       },
       {
-        src: "assets/timeline-photos/2000s-2.jpg",
-        alt: "Second placeholder collage image (replace with a 2020s photo)",
+        src: "assets/timeline-photos/2020s-2.jpg",
+        alt: "Second concert photo for the 2020s section",
         photoClass: "decade-header-collage__photo--b",
+        artist: "Bad Bunny",
       },
     ],
   },
 ];
 
-/** Collage wrapper + images for one decade rail (collage grid layout). */
-function createDecadeCollage(ariaLabel, photos) {
+/**
+ * Collage wrapper + images for one decade rail (collage grid layout).
+ * @param {string} ariaLabel
+ * @param {typeof DECADE_COLLAGE_CONFIG[number]["photos"]} photos
+ * @param {Map<string, number[]>} artistToYears
+ */
+function createDecadeCollage(ariaLabel, photos, artistToYears) {
   const collage = document.createElement("div");
   collage.className = "decade-header-collage";
   collage.setAttribute("aria-label", ariaLabel);
@@ -193,6 +255,26 @@ function createDecadeCollage(ariaLabel, photos) {
     img.alt = item.alt;
     img.loading = "lazy";
     img.decoding = "async";
+    // Make each photo behave like a button: clickable, keyboard-focusable,
+    // and announced as a button to assistive tech. Activates the lightbox.
+    img.setAttribute("role", "button");
+    img.tabIndex = 0;
+    img.style.cursor = "zoom-in";
+    const open = () => {
+      const name = typeof item.artist === "string" ? item.artist.trim() : "";
+      const caption =
+        name !== ""
+          ? { artist: name, years: artistToYears.get(name) ?? [] }
+          : undefined;
+      openPhotoLightbox(item.src, item.alt, img, caption);
+    };
+    img.addEventListener("click", open);
+    img.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+    });
     collage.appendChild(img);
   }
   return collage;
@@ -231,7 +313,7 @@ function buildYearRow(year, onRight, byYear, popover) {
     const dot = document.createElement("button");
     dot.type = "button";
     dot.className = "event-dot";
-    if (SPECIAL_TIMELINE_DATES.has(ev.date)) dot.classList.add("event-dot--special-date");
+    if (RICH_DETAIL_DATES.has(ev.date)) dot.classList.add("event-dot--special-date");
     const hoverText = ev.artists.map((a) => a.name).join(", ");
     dot.title = hoverText;
     dot.setAttribute("aria-haspopup", "dialog");
@@ -258,8 +340,9 @@ function buildYearRow(year, onRight, byYear, popover) {
  * @param {HTMLElement} rootEl
  * @param {ReturnType<typeof groupEventsByYear>} byYear
  * @param {ReturnType<typeof createEventPopover>} popover
+ * @param {Map<string, number[]>} artistToYears
  */
-function renderTimelineVertical(rootEl, byYear, popover) {
+function renderTimelineVertical(rootEl, byYear, popover, artistToYears) {
   rootEl.replaceChildren();
 
   const wrap = document.createElement("div");
@@ -281,11 +364,15 @@ function renderTimelineVertical(rootEl, byYear, popover) {
      * right when events are on the left) so the axis and dots never sit under the photos.
      */
     block.classList.add("decade-block--collage");
+    block.classList.add(`decade-block--collage-era-${bucket.startYear}`);
     if (onRight) block.classList.add("decade-block--collage-rail-start");
     else block.classList.add("decade-block--collage-rail-end");
 
     const layout = document.createElement("div");
     layout.className = "decade-collage-layout";
+    if (SPLIT_DECADE_HEADING_AND_BLURB) {
+      layout.classList.add("decade-collage-layout--split-heading");
+    }
 
     const headerAxis = document.createElement("div");
     headerAxis.className = "decade-header-axis";
@@ -297,21 +384,44 @@ function renderTimelineVertical(rootEl, byYear, popover) {
     const headerInner = document.createElement("div");
     headerInner.className = "decade-header-inner";
 
-    const h2 = document.createElement("h2");
-    h2.className = "decade-title";
-    h2.textContent = bucket.label;
+    const eraHeading = document.createElement("h2");
+    eraHeading.className = "decade-era-label";
+    eraHeading.textContent = bucket.eraLabel;
+
+    const titleHeading = document.createElement("h3");
+    titleHeading.className = "decade-title";
+    titleHeading.textContent = bucket.label;
 
     const blurb = document.createElement("p");
     blurb.className = "decade-header-blurb";
     blurb.textContent = DECADE_DUMMY_BLURBS[decadeIndex] ?? DECADE_DUMMY_BLURBS[0];
 
-    headerInner.append(h2, blurb);
+    if (SPLIT_DECADE_HEADING_AND_BLURB) {
+      headerInner.classList.add("decade-header-inner--title-only");
+      headerInner.append(eraHeading, titleHeading);
+    } else {
+      headerInner.append(eraHeading, titleHeading, blurb);
+    }
     introWrap.appendChild(headerInner);
 
     const headerOpposite = document.createElement("div");
-    headerOpposite.className = "decade-header-side decade-header-side--empty";
+    headerOpposite.className = "decade-collage-layout__header-opposite decade-header-side";
+
+    if (SPLIT_DECADE_HEADING_AND_BLURB) {
+      headerOpposite.classList.add("decade-header-side--filled");
+      const blurbInner = document.createElement("div");
+      blurbInner.className = "decade-header-inner";
+      blurbInner.appendChild(blurb);
+      headerOpposite.appendChild(blurbInner);
+    } else {
+      headerOpposite.classList.add("decade-header-side--empty");
+    }
 
     if (onRight) {
+      introWrap.classList.add("decade-header-side--left");
+      headerOpposite.classList.add("decade-header-side--right");
+    } else if (SPLIT_DECADE_HEADING_AND_BLURB) {
+      /* Split view: keep heading left of axis / blurb right like rail-start decades (polaroids stay on the outer column). */
       introWrap.classList.add("decade-header-side--left");
       headerOpposite.classList.add("decade-header-side--right");
     } else {
@@ -321,7 +431,7 @@ function renderTimelineVertical(rootEl, byYear, popover) {
 
     const rail = document.createElement("div");
     rail.className = "decade-collage-rail";
-    rail.appendChild(createDecadeCollage(collageCfg.ariaLabel, collageCfg.photos));
+    rail.appendChild(createDecadeCollage(collageCfg.ariaLabel, collageCfg.photos, artistToYears));
 
     const yearCount = bucket.endYear - bucket.startYear + 1;
     rail.style.gridRow = `2 / span ${yearCount}`;
@@ -353,17 +463,81 @@ function renderTimelineVertical(rootEl, byYear, popover) {
 
 // -----------------------------------------------------------------------------
 // Live region / status line updates
-// Writes progress and result counts to [data-status] when present (e.g. a11y-friendly summary).
+// Writes progress and errors as a single .status paragraph inside [data-status].
+// Success clears the header; loading/errors stay as a single .status in [data-status].
 // -----------------------------------------------------------------------------
 function setStatus(message) {
-  const el = document.querySelector("[data-status]");
-  if (el) el.textContent = message;
+  const wrap = document.querySelector("[data-status]");
+  if (!wrap) return;
+  const p = document.createElement("p");
+  p.className = "status";
+  p.textContent = message;
+  wrap.replaceChildren(p);
+}
+
+/**
+ * @param {{ concertCount: number; dateCount: number }} stats
+ */
+function setTimelineIntroComplete(stats) {
+  const timelineWrap = document.querySelector("#timeline-vertical .timeline-vertical-wrap");
+  if (!timelineWrap) return;
+
+  const title = document.createElement("h2");
+  title.id = "timeline-intro-heading";
+  title.className = "timeline-intro__title";
+  title.textContent = `Between ${START_YEAR} and ${END_YEAR}, I attended ${stats.dateCount} events and saw ${stats.concertCount} artist sets.`;
+
+  const subtitle = document.createElement("h3");
+  subtitle.className = "timeline-intro__subtitle";
+  subtitle.textContent = "Click a circle for details and setlist links.";
+
+  const markerPlain = document.createElement("span");
+  markerPlain.className = "timeline-intro__marker timeline-intro__marker--plain";
+  markerPlain.setAttribute("aria-hidden", "true");
+
+  const markerRich = document.createElement("span");
+  markerRich.className = "timeline-intro__marker timeline-intro__marker--rich";
+  markerRich.setAttribute("aria-hidden", "true");
+
+  const linePlain = document.createElement("p");
+  linePlain.className = "timeline-intro__line";
+  // Two U+2003 EM SPACEs between legend dot and sentence (2× em-wide gap).
+  const emSpace = "\u2003\u2003";
+  linePlain.append(
+    markerPlain,
+    document.createTextNode(emSpace),
+    document.createTextNode("Each circle represents a date.")
+  );
+
+  const lineRich = document.createElement("p");
+  lineRich.className = "timeline-intro__line";
+  lineRich.append(
+    markerRich,
+    document.createTextNode(emSpace),
+    document.createTextNode(
+      "Outlined circles indicate extra content including stories, images, and videos."
+    )
+  );
+
+  const introInner = document.createElement("div");
+  introInner.className = "timeline-vertical-intro__inner";
+  introInner.append(title, subtitle, linePlain, lineRich);
+
+  const introSection = document.createElement("section");
+  introSection.className = "timeline-vertical-intro";
+  introSection.setAttribute("aria-labelledby", "timeline-intro-heading");
+  introSection.appendChild(introInner);
+
+  timelineWrap.insertBefore(introSection, timelineWrap.firstChild);
+
+  const statusHost = document.querySelector("[data-status]");
+  if (statusHost) statusHost.replaceChildren();
 }
 
 // -----------------------------------------------------------------------------
 // Bootstrap
 // Merges data, mounts the timeline and popover on #timeline-vertical, wires outside-click
-// and scroll-to-close, and reports success or errors via setStatus.
+// and scroll-to-close; loading/errors via setStatus, intro mounted into the card on success.
 // -----------------------------------------------------------------------------
 function main() {
   const root = $("#timeline-vertical");
@@ -373,9 +547,14 @@ function main() {
   try {
     const merged = mergeEventsByDate(CONCERT_EVENTS);
     const byYear = groupEventsByYear(merged);
+    const artistToYears = buildArtistToYears(merged);
 
     const popover = createEventPopover();
     document.body.appendChild(popover.el);
+
+    // Build the shared photo lightbox once so the <dialog> is mounted before any
+    // collage photo is clicked. Subsequent calls to openPhotoLightbox reuse it.
+    createPhotoLightbox();
 
     const onOutsidePointerDown = (e) => {
       if (popover.el.hidden) return;
@@ -386,15 +565,7 @@ function main() {
       hideEventPopover(popover);
     };
 
-    renderTimelineVertical(root, byYear, popover);
-
-    // Polaroid offset scrubs with scroll: one progress value per decade collage so both
-    // photos finish together (see --reveal-progress in style.css).
-    bindScrollRevealGrouped(root.querySelectorAll(".decade-header-collage"), ".decade-header-collage__photo", {
-      startViewportRatio: 0.88,
-      // Higher endViewportRatio = full pose after less scroll (narrower 0→1 band vs viewport).
-      endViewportRatio: 0.58,
-    });
+    renderTimelineVertical(root, byYear, popover, artistToYears);
 
     attachPopoverGlobalListeners(popover, onOutsidePointerDown);
     window.addEventListener(
@@ -405,9 +576,10 @@ function main() {
       { passive: true }
     );
 
-    setStatus(
-      `Between ${START_YEAR} and ${END_YEAR}, I saw ${CONCERT_EVENTS.length} different sets on ${merged.length} concert dates. Each circle represents a date. Click a circle for details and setlist links. Outlined circles indicate additional content including stories, images, and videos.`
-    );
+    setTimelineIntroComplete({
+      concertCount: CONCERT_EVENTS.length,
+      dateCount: merged.length,
+    });
   } catch (err) {
     console.error(err);
     setStatus(`Failed to render timeline: ${err instanceof Error ? err.message : String(err)}`);

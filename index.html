@@ -5,16 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Concert Stories</title>
     <link rel="stylesheet" href="./style.css" />
+    <!-- cover-page: start -->
+    <link rel="stylesheet" href="./cover-page.css" />
+    <!-- cover-page: end -->
   </head>
   <body>
+    <!-- cover-page: start -->
+    <section id="cover-page" class="cover-page" aria-label="Introduction" aria-labelledby="cover-page-heading">
+      <div class="cover-page__foreground">
+        <div class="cover-page__hero-stack">
+          <div class="cover-page__overlay">
+            <h1 id="cover-page-heading">Concert Stories</h1>
+            <p class="lede">
+              In 2025 I began a project of collecting data for all concerts I recall attending through my life. From this data I created
+              <a href="https://mariacatoni.commons.gc.cuny.edu/concerts-2000-2025/">a series of visualizations</a>
+              showing my attendance history, but in the process, I felt the stories behind my experiences were lost. This is my attempt to
+              retroactively collect stories, pictures, and videos and create a journal for some of the most memorable events I attended
+              between 2000 and 2025.
+            </p>
+            <button type="button" id="cover-page-dismiss" class="cover-page__cta" aria-controls="timeline-vertical">
+              View timeline
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- cover-page: end -->
+
     <header class="page-header">
-      <h1>Concert Stories</h1>
-      <p class="lede">
-        In 2025 I began a project of collecting data for all concerts I recall attending through my life. From this data I created
-        <a href="https://mariacatoni.commons.gc.cuny.edu/concerts-2000-2025/">a series of visualizations</a>
-        showing my attendance history, but in the process, I felt the stories behind my experiences were lost. This is my attempt to retroactively collect stories, pictures, and videos and create a journal for some of the most memorable events I attended between 2000 and 2025.
-      </p>
-      <p class="status" data-status>Loading…</p>
+      <div class="page-status" data-status>
+        <p class="status">Loading…</p>
+      </div>
     </header>
 
     <main class="page-main">
@@ -25,6 +46,9 @@
       
     </footer>
 
+    <!-- cover-page: start — dismiss works from file:// -->
+    <script src="./js/cover-dismiss.js"></script>
+    <!-- cover-page: end -->
     <script type="module" src="./js/timeline.js"></script>
   </body>
 </html>

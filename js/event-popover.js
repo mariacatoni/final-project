@@ -1,5 +1,6 @@
 // Loads optional long-form copy and images keyed by concert date for the detail pane.
 import { getRichDetailForDate } from "./event-rich-details.js";
+import { formatLocationComma } from "./event-location.js";
 
 // -----------------------------------------------------------------------------
 // Rich media in the popover
@@ -31,6 +32,8 @@ function createYoutubeFigure(slide, figureClass) {
   const iframe = document.createElement("iframe");
   iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(slide.videoId)}?rel=0`;
   iframe.title = slide.title;
+  // YouTube embeds may show error 153 without a usable Referer; send origin when cross-origin.
+  iframe.referrerPolicy = "strict-origin-when-cross-origin";
   iframe.loading = "lazy";
   iframe.setAttribute("allowfullscreen", "");
   iframe.allow =
@@ -162,7 +165,7 @@ export function formatDisplayDate(isoDate) {
 // focus on close). hideEventPopover hides the dialog; createEventPopover builds
 // the markup (header, scroll area, artist list, rich region) and wires the close control.
 // -----------------------------------------------------------------------------
-/** @typedef {{ el: HTMLDivElement; headerEl: HTMLDivElement; dateEl: HTMLParagraphElement; listEl: HTMLParagraphElement; richEl: HTMLDivElement; closeBtn: HTMLButtonElement; scrollEl: HTMLDivElement }} EventPopover */
+/** @typedef {{ el: HTMLDivElement; headerEl: HTMLDivElement; dateEl: HTMLParagraphElement; listEl: HTMLParagraphElement; locationEl: HTMLParagraphElement; richEl: HTMLDivElement; closeBtn: HTMLButtonElement; scrollEl: HTMLDivElement }} EventPopover */
 
 /** @type {HTMLButtonElement | null} */
 let activeDotEl = null;
@@ -205,21 +208,24 @@ export function createEventPopover() {
   const listEl = document.createElement("p");
   listEl.className = "event-detail-popover-artists";
 
+  const locationEl = document.createElement("p");
+  locationEl.className = "event-detail-popover-location";
+  locationEl.hidden = true;
+
   const richEl = document.createElement("div");
   richEl.className = "event-detail-popover-rich";
   richEl.hidden = true;
 
-  scrollEl.append(listEl, richEl);
+  scrollEl.append(listEl, locationEl, richEl);
   el.append(headerEl, scrollEl);
 
   /** @type {EventPopover} */
-  const popover = { el, headerEl, dateEl, listEl, richEl, closeBtn, scrollEl };
+  const popover = { el, headerEl, dateEl, listEl, locationEl, richEl, closeBtn, scrollEl };
   const onClose = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!popover.el.hidden) hideEventPopover(popover);
   };
-  closeBtn.addEventListener("pointerdown", onClose, true);
   closeBtn.addEventListener("click", onClose);
   return popover;
 }
@@ -289,7 +295,7 @@ function positionPopoverNearPointer(popover, pointerEvent, anchorEl) {
 // -----------------------------------------------------------------------------
 /**
  * @param {EventPopover} popover
- * @param {{ date: string; artists: { name: string; setlist?: string }[] }} ev
+ * @param {{ date: string; artists: { name: string; setlist?: string }[]; venue?: string; city?: string; state?: string }} ev
  * @param {HTMLButtonElement} anchorEl
  * @param {MouseEvent} pointerEvent
  */
@@ -314,6 +320,15 @@ export function showEventPopover(popover, ev, anchorEl, pointerEvent) {
     if (i < n - 1) {
       popover.listEl.appendChild(document.createTextNode(", "));
     }
+  }
+
+  const locLine = formatLocationComma(ev);
+  if (locLine) {
+    popover.locationEl.textContent = locLine;
+    popover.locationEl.hidden = false;
+  } else {
+    popover.locationEl.textContent = "";
+    popover.locationEl.hidden = true;
   }
 
   const detail = getRichDetailForDate(ev.date);

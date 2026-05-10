@@ -3,6 +3,8 @@
    used across the timeline and popover. */
 html {
   font-size: 112.5%;
+  min-height: 100%;
+  background-color: var(--bg);
 }
 
 :root {
@@ -13,6 +15,8 @@ html {
   --muted: rgba(50, 46, 52, 0.72);
   --border: rgba(50, 46, 52, 0.12);
   --dot: #A962D9;
+  /* Plain timeline dots (non–rich-detail dates); special dates use full `--dot`. */
+  --dot-muted: color-mix(in srgb, var(--dot) 70%, white);
   /* Prior hover #9A35DE, darkened 20% toward black (80% / 20% mix). */
   --dot-hover: color-mix(in srgb, #9A35DE 80%, black);
   --shadow: 0 10px 30px rgba(50, 46, 52, 0.08);
@@ -29,12 +33,65 @@ html {
   box-sizing: border-box;
 }
 
-/* Page defaults: Courier monospace, background/text from CSS variables. */
+/* Full-page photo + tint (same treatment as the former cover-only layers) so the
+   timeline view keeps the same atmosphere after the intro is dismissed. */
 body {
   margin: 0;
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
   font-family: Courier, "Courier New", monospace;
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
+}
+
+/* Full-bleed photo; blur ramps up after “View timeline” (sharp while intro cover is open). */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("assets/bg.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(3px);
+  transition: filter 0.75s ease-out;
+}
+
+body:has(#cover-page:not([hidden]))::after {
+  filter: blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after,
+  body::before {
+    transition: none;
+  }
+}
+
+/* Tone overlay: lighter on intro cover, darker once the timeline is shown */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(72, 58, 88, 0.38);
+  background: color-mix(in srgb, var(--bg, #f4e3ff) 52%, rgba(18, 14, 24, 0.42));
+  transition: background 0.75s ease-out;
+}
+
+body:has(#cover-page:not([hidden]))::before {
+  background: rgba(244, 227, 255, 0.62);
+  background: color-mix(in srgb, var(--bg, #f4e3ff) 62%, transparent);
+}
+
+/* Stack all body sections above the decorative layers */
+body > * {
+  position: relative;
+  z-index: 2;
 }
 
 /* Inline code samples match body Courier stack, slightly smaller than body text. */
@@ -71,12 +128,11 @@ h1 {
   max-width: var(--timeline-max-width);
   margin: 0 auto 10px;
   padding-block: 12px;
-  border-top: 2px solid #401835;
-  border-bottom: 2px solid #401835;
+  border: none;
   text-align: center;
   font-size: clamp(100px, 3.1vw, 200px);
   letter-spacing: -0.02em;
-  text-shadow: 0.02em 0.02em 0 #9077A1;
+  text-shadow: 0.04em 0.04em 0 #9077A1;
 }
 
 .lede {
@@ -105,6 +161,122 @@ h1 {
   font-size: 14px;
   line-height: 1.55;
   font-style: italic;
+}
+
+/* Wrapper for loading/error message above the timeline card (aligned with inner content). */
+.page-status {
+  margin: 14px auto 0;
+  max-width: var(--timeline-max-width);
+  /* Match inner horizontal edges of .timeline-vertical-wrap (root padding + wrap padding). */
+  padding-inline: calc(16px + 14px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.page-status:empty {
+  display: none;
+}
+
+.page-header:has(.page-status:empty) {
+  padding-bottom: 0;
+}
+
+.page-status > .status {
+  margin: 0;
+}
+
+/* Stats, instructions, and legend at the top of the timeline card (above decade blocks).
+   Outer section is full width so the bottom rule matches .timeline-vertical-wrap edges.
+   Inner column: font-size establishes `ch` for a tight width (~2 heading lines + legend at 14px in one line). */
+.timeline-vertical-intro {
+  width: 100%;
+  box-sizing: border-box;
+  padding-inline-start: 1.25rem;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #401835;
+  /* Center the intro column in the full-width band; copy stays left-aligned inside the column. */
+  text-align: center;
+}
+
+.timeline-vertical-intro__inner {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  text-align: left;
+  vertical-align: top;
+  /* Heading-sized `ch` (Courier): ~36 chars wide fits a 2-line stats sentence; same px width fits ~78 smaller legend chars on one line. */
+  font-size: 2.1rem;
+  width: 36ch;
+  max-width: 100%;
+}
+
+.timeline-vertical-intro__inner .timeline-intro__title {
+  font-size: 1em;
+}
+
+.timeline-vertical-intro__inner .timeline-intro__subtitle {
+  font-size: 0.5em; /* 1.05rem when inner is 2.1rem */
+}
+
+.timeline-vertical-intro__inner .timeline-intro__line {
+  font-size: 0.37037em; /* 14px when inner is 2.1rem (14/37.8) */
+}
+
+.timeline-intro__title {
+  margin: 0;
+  text-align: left;
+  color: var(--text);
+  font-size: 2.1rem;
+  font-weight: 650;
+  font-style: normal;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.timeline-intro__subtitle {
+  margin: 0;
+  text-align: left;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 650;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.timeline-intro__line {
+  margin: 0;
+  text-align: left;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+  font-style: italic;
+}
+
+/* Inline legend dots: same look as .event-dot / .event-dot--special-date, without hover/focus rules. */
+.timeline-intro__marker {
+  display: inline-block;
+  vertical-align: middle;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  margin-inline: 0;
+  border-radius: 999px;
+  transform: scale(1.5);
+  transform-origin: center;
+}
+
+.timeline-intro__marker--plain {
+  background: var(--dot-muted);
+}
+
+.timeline-intro__marker--rich {
+  background: var(--dot);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dot) 70%, black);
+  transform: scale(1.85);
 }
 
 /* --- Vertical timeline (decades, years, axis, dots) --- */
@@ -227,6 +399,22 @@ h1 {
   margin-right: auto;
 }
 
+/* Display-era line: same typographic voice as page `h1` (shadow, tracking) without rules or centered layout. */
+.decade-era-label {
+  margin: 0 0 10px;
+  padding: 0;
+  border: none;
+  max-width: none;
+  text-align: inherit;
+  font-size: clamp(2.25rem, 4.2vw + 0.6rem, 3.75rem);
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-shadow: 0.04em 0.04em 0 #9077a1;
+  color: var(--text);
+}
+
 .decade-title {
   margin: 0 0 8px;
   font-size: clamp(30px, 3.35vw, 40px);
@@ -269,7 +457,7 @@ h1 {
   padding-bottom: 28px;
 }
 
-.decade-block--collage-rail-start .decade-collage-layout > .decade-header-side--right.decade-header-side--empty {
+.decade-block--collage-rail-start .decade-collage-layout__header-opposite {
   grid-column: 3;
   grid-row: 1;
 }
@@ -281,9 +469,66 @@ h1 {
   padding-bottom: 28px;
 }
 
-.decade-block--collage-rail-end .decade-collage-layout > .decade-header-side--left.decade-header-side--empty {
+.decade-block--collage-rail-end .decade-collage-layout__header-opposite {
   grid-column: 1;
   grid-row: 1;
+}
+
+/* Split view only: rail-end decade uses same heading-left / blurb-right placement as rail-start blocks. */
+.decade-block--collage-rail-end .decade-collage-layout--split-heading .decade-collage-layout__intro {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.decade-block--collage-rail-end .decade-collage-layout--split-heading .decade-collage-layout__header-opposite {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+/* Decade era + title alone (blurb sits across the axis when SPLIT_DECADE_HEADING_AND_BLURB is on). */
+.decade-header-inner--title-only .decade-era-label {
+  margin-bottom: 6px;
+}
+
+.decade-header-inner--title-only .decade-title {
+  margin-bottom: 0;
+}
+
+/* Extra breathing room around split title / blurb (see SPLIT_DECADE_HEADING_AND_BLURB in timeline.js). */
+.decade-collage-layout--split-heading {
+  padding-bottom: 22px;
+}
+
+.decade-block--collage:first-child .decade-collage-layout--split-heading {
+  padding-top: 22px;
+}
+
+.decade-block--collage:not(:first-child) .decade-collage-layout--split-heading {
+  margin-top: 20px;
+  padding-top: 26px;
+}
+
+.decade-block--collage-rail-start .decade-collage-layout--split-heading .decade-collage-layout__intro,
+.decade-block--collage-rail-end .decade-collage-layout--split-heading .decade-collage-layout__intro {
+  padding-bottom: 44px;
+}
+
+.decade-collage-layout--split-heading .decade-collage-layout__header-opposite.decade-header-side--filled {
+  padding-bottom: 44px;
+}
+
+.decade-collage-layout--split-heading .decade-header-side--filled.decade-header-side--left {
+  padding-right: 18px;
+  padding-left: 14px;
+}
+
+.decade-collage-layout--split-heading .decade-header-side--filled.decade-header-side--right {
+  padding-left: 18px;
+  padding-right: 14px;
+}
+
+.decade-collage-layout--split-heading .decade-collage-rail .decade-header-collage {
+  margin-top: 36px;
 }
 
 .decade-collage-layout > .decade-header-axis {
@@ -314,6 +559,11 @@ h1 {
   padding-left: 12px;
 }
 
+/* 2010s rail-end: extra breakout so the lower polaroid (2010s-3) can clear the timeline card edge. */
+.decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail {
+  --timeline-collage-breakout: 156px;
+}
+
 .decade-block--collage .decade-collage-year {
   display: grid;
   align-items: stretch;
@@ -334,18 +584,10 @@ h1 {
   margin-top: 16px;
 }
 
-.decade-collage-layout .decade-collage-year:not(:last-child) .year-axis-cell,
-.decade-collage-layout .decade-collage-year:not(:last-child) .year-side--events {
-  border-bottom: 1px solid rgba(50, 46, 52, 0.06);
-}
-
-.decade-collage-layout .decade-collage-year:last-child .year-axis-cell,
-.decade-collage-layout .decade-collage-year:last-child .year-side--events {
-  border-bottom: 0;
-}
-
 /*
- * Polaroids: --a breaks toward the outer page edge; --b sits on the inner edge near the axis.
+ * Polaroids: shared frame on .decade-header-collage__photo; position/transform per slot (--a/--b/--c)
+ * are scoped under .decade-block--collage-era-<startYear> so each decade can be edited without affecting others.
+ * --a breaks toward the outer page edge; --b sits on the inner edge near the axis.
  * Rail-start = left column; rail-end mirrors for decades whose dots sit left of the axis.
  */
 .decade-block--collage .decade-collage-rail .decade-header-collage {
@@ -361,89 +603,159 @@ h1 {
   display: block;
   width: clamp(252px, 93.6%, 384px);
   height: auto;
-  /* Polaroid frame; 35% thinner than former 10px. */
-  border: 6.5px solid #fff;
+  /* Polaroid frame (white border); 2px thinner than prior 6.5px. */
+  border: 4.5px solid #fff;
   box-sizing: border-box;
-  box-shadow: 0 12px 28px rgba(50, 46, 52, 0.2);
+  box-shadow: 0 6px 18px rgba(50, 46, 52, 0.11);
   object-fit: cover;
   aspect-ratio: 4 / 3;
-  /* Scroll-scrub: JS sets --reveal-progress 0→1. Per-photo --reveal-start-* sets direction from below. */
-  --reveal-progress: 0;
-  --reveal-start-x: 0px;
-  --reveal-start-y: 88px;
-  --reveal-x: calc((1 - var(--reveal-progress, 0)) * var(--reveal-start-x));
-  --reveal-y: calc((1 - var(--reveal-progress, 0)) * var(--reveal-start-y));
-  will-change: transform;
+  /* Photos render desaturated; full color is reserved for the click-to-expand lightbox. */
+  filter: grayscale(100%);
+  /* Hover/focus affordance: standalone `scale` composes with the per-era `transform` rules below. */
+  scale: 1;
+  transition: scale 220ms ease;
 }
 
-/* Upper polaroid: in from below-left (outer edge of left rail). */
-.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--a {
-  --reveal-start-x: -76px;
-  --reveal-start-y: 112px;
-  top: 8px;
-  left: -32px;
+/* Hover/focus: gentle scale-up to signal the photo is clickable. Deliberately no
+   z-index change — stack order stays as defined by the per-era layout rules. */
+.decade-block--collage .decade-collage-rail .decade-header-collage__photo:hover,
+.decade-block--collage .decade-collage-rail .decade-header-collage__photo:focus-visible {
+  scale: 1.05;
+}
+
+/* 2000s + 2020s (rail-start): sit the stack nearer the central axis; padding-right keeps rotated frames off the 62px gutter. */
+.decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage,
+.decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage {
+  margin-left: 28px;
+  padding-right: 14px;
+}
+
+/* --- Era 2000 (rail-start): polaroid layout --- */
+/* Upper polaroid (outer edge of left rail). */
+.decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--a {
+  top: 4px;
+  left: -26px;
   right: auto;
   bottom: auto;
   z-index: 1;
-  width: clamp(270px, 97.2%, 432px);
+  width: clamp(280px, 100%, 460px);
   max-width: none;
   height: auto;
   aspect-ratio: auto;
   object-fit: contain;
-  transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) rotate(-5deg) translateX(-14px);
+  transform: rotate(-6deg) translateX(-2px);
   transform-origin: 72% 12%;
 }
 
-/* Lower polaroid: in from below-right (toward the axis). */
-.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--b {
-  --reveal-start-x: 64px;
-  --reveal-start-y: 96px;
+/* Lower polaroid (toward the axis). */
+.decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--b {
   left: auto;
-  right: 0;
+  right: 14px;
   bottom: 4px;
   top: auto;
   z-index: 3;
-  width: clamp(245px, 88.2%, 367px);
-  transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) rotate(6deg);
+  width: clamp(215px, 76%, 310px);
+  transform: rotate(8deg);
   transform-origin: 90% 92%;
 }
 
-/* Mirror layout (rail on the right): opposite horizontal paths so motion stays “from the bottom” in page space. */
-.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--a {
-  --reveal-start-x: 76px;
-  --reveal-start-y: 112px;
-  top: 8px;
+/* Middle polaroid (optional third photo): inset from outer rail edge vs --a so edges don’t hug the top photo. */
+.decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--c {
+  top: 46%;
+  left: 30px;
+  right: auto;
+  bottom: auto;
+  z-index: 2;
+  width: clamp(190px, 60%, 268px);
+  transform: rotate(-2.5deg);
+  transform-origin: 48% 42%;
+}
+
+/* --- Era 2010 (rail-end): scrapbook diagonal — band (a, back), DJ over top’s lower-right (c), piano over middle’s lower-left (b) --- */
+.decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--a {
+  top: 6px;
   left: auto;
-  right: -32px;
+  right: -48px;
   bottom: auto;
   z-index: 1;
-  width: clamp(270px, 97.2%, 432px);
+  width: clamp(275px, 100%, 450px);
   max-width: none;
   height: auto;
   aspect-ratio: auto;
   object-fit: contain;
-  transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) rotate(5deg) translateX(14px);
-  transform-origin: 28% 12%;
+  transform: rotate(-4deg) translateX(10px);
+  transform-origin: 22% 82%;
 }
 
-.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--b {
-  --reveal-start-x: -64px;
-  --reveal-start-y: 96px;
+.decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--b {
+  left: auto;
+  right: -30px;
+  bottom: -14px;
+  top: auto;
+  z-index: 3;
+  width: clamp(220px, 78%, 318px);
+  transform: rotate(-3.5deg);
+  transform-origin: 12% 90%;
+}
+
+.decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--c {
+  top: 33%;
+  left: auto;
+  right: 52px;
+  bottom: auto;
+  z-index: 2;
+  width: clamp(198px, 64%, 292px);
+  transform: rotate(5deg);
+  transform-origin: 55% 42%;
+}
+
+/* --- Era 2020 (rail-start): aligned with 2000s shift toward axis --- */
+/* 2020s: compact header band so the two-photo stack stays lighter than 2000s/2010s collages. */
+.decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage {
+  min-height: 436px;
+  margin-top: 18px;
+}
+
+.decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--a {
+  top: 4px;
+  left: -26px;
   right: auto;
-  left: 0;
+  bottom: auto;
+  z-index: 1;
+  width: clamp(220px, 88%, 352px);
+  max-width: none;
+  height: auto;
+  aspect-ratio: auto;
+  object-fit: contain;
+  transform: rotate(-6deg) translateX(-2px);
+  transform-origin: 72% 12%;
+}
+
+.decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--b {
+  left: auto;
+  right: 14px;
   bottom: 4px;
   top: auto;
   z-index: 3;
-  width: clamp(245px, 88.2%, 367px);
-  transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) rotate(-6deg);
-  transform-origin: 10% 92%;
+  /* Portrait crop for 2020s-2: tighter width + 3:4 frame so wide shots read as vertical. */
+  width: clamp(142px, 52%, 200px);
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: center center;
+  height: auto;
+  transform: rotate(8deg);
+  transform-origin: 90% 92%;
 }
 
-/* Honor user motion preference: photos stay in final pose, no scroll-driven offset. */
-@media (prefers-reduced-motion: reduce) {
-  .decade-block--collage .decade-collage-rail .decade-header-collage__photo {
-    --reveal-progress: 1;
-  }
+.decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--c {
+  top: 46%;
+  left: 30px;
+  right: auto;
+  bottom: auto;
+  z-index: 2;
+  width: clamp(190px, 60%, 268px);
+  transform: rotate(-2.5deg);
+  transform-origin: 48% 42%;
 }
 
 /* Single year row: same 3-column grid as the decade header — events | year pill | events. */
@@ -457,17 +769,6 @@ h1 {
 /* Extra vertical rhythm between consecutive year labels (same decade). */
 .decade-block > .year-row + .year-row {
   margin-top: 16px;
-}
-
-/* Year dividers only under the axis and the events column — not under the side with no dots. */
-.year-axis-cell,
-.year-side--events {
-  border-bottom: 1px solid rgba(50, 46, 52, 0.06);
-}
-
-.year-row:last-child .year-axis-cell,
-.year-row:last-child .year-side--events {
-  border-bottom: 0;
 }
 
 /* Left/right columns: flex rows of event dots, aligned toward the center axis. */
@@ -537,7 +838,7 @@ h1 {
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: var(--dot);
+  background: var(--dot-muted);
   transform: scale(1.5);
   transform-origin: center;
   cursor: pointer;
@@ -545,8 +846,9 @@ h1 {
   transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
-/* Milestone dates: outer ring = dot fill mixed 30% toward black; 2px. */
+/* Milestone dates (rich popup): full purple + outer ring mixed toward black; 2px. */
 .event-dot.event-dot--special-date {
+  background: var(--dot);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--dot) 70%, black);
 }
 
@@ -789,6 +1091,7 @@ h1 {
 /* Artist list in the popover header and link styling. */
 .event-detail-popover-artists {
   margin: 0;
+  font-size: 15px;
   color: var(--muted);
   line-height: 1.45;
 }
@@ -802,6 +1105,15 @@ h1 {
 
 .event-detail-popover-artist-link:hover {
   color: var(--dot-hover);
+}
+
+/* Venue, city, state under the artist line (comma-separated). */
+.event-detail-popover-location {
+  margin: 0.55rem 0 0;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--muted);
 }
 
 /* Timeline dot feedback on hover and keyboard focus (same visual as hover). */
@@ -855,12 +1167,40 @@ h1 {
     padding-left: 6px;
   }
 
+  .decade-collage-layout--split-heading .decade-header-side--filled.decade-header-side--left {
+    padding-right: 14px;
+    padding-left: 10px;
+  }
+
+  .decade-collage-layout--split-heading .decade-header-side--filled.decade-header-side--right {
+    padding-left: 14px;
+    padding-right: 10px;
+  }
+
+  .decade-block--collage-rail-start .decade-collage-layout--split-heading .decade-collage-layout__intro,
+  .decade-block--collage-rail-end .decade-collage-layout--split-heading .decade-collage-layout__intro,
+  .decade-collage-layout--split-heading .decade-collage-layout__header-opposite.decade-header-side--filled {
+    padding-bottom: 36px;
+  }
+
+  .decade-collage-layout--split-heading .decade-collage-rail .decade-header-collage {
+    margin-top: 28px;
+  }
+
   .timeline-vertical-root {
     padding: 16px 12px 16px;
   }
 
+  .page-status {
+    padding-inline: calc(12px + 14px);
+  }
+
   :root {
     --timeline-collage-breakout: 52px;
+  }
+
+  .decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail {
+    --timeline-collage-breakout: 100px;
   }
 
   .decade-block--collage-rail-start .decade-collage-rail {
@@ -881,12 +1221,23 @@ h1 {
     width: clamp(204px, 88.8%, 336px);
   }
 
-  .decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--a {
-    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) rotate(-4deg) translateX(-8px);
+  .decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage,
+  .decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage {
+    margin-left: 20px;
+    padding-right: 10px;
+  }
+
+  .decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage {
+    min-height: 356px;
+    margin-top: 14px;
+  }
+
+  .decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--a {
+    transform: rotate(-5deg) translateX(-2px);
     top: 6px;
-    left: -18px;
+    left: -10px;
     right: auto;
-    width: clamp(234px, 90%, 360px);
+    width: clamp(244px, 92%, 380px);
     max-width: none;
     height: auto;
     aspect-ratio: auto;
@@ -894,40 +1245,100 @@ h1 {
     z-index: 1;
   }
 
-  .decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--b {
-    transform: translate(var(--reveal-x, 0px), var(--reveal-y, 0px)) rotate(5deg);
-    width: clamp(208px, 88.2%, 331px);
+  .decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--b {
+    transform: rotate(6deg);
+    width: clamp(180px, 72%, 280px);
     bottom: 4px;
     top: auto;
     left: auto;
-    right: 2px;
+    right: 12px;
     z-index: 3;
     transform-origin: 90% 92%;
   }
 
-  .decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--a {
-    transform: translate(calc(-1 * var(--reveal-x, 0px)), var(--reveal-y, 0px)) rotate(4deg) translateX(8px);
+  .decade-block--collage-era-2000.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--c {
+    transform: rotate(-2deg);
+    width: clamp(165px, 55%, 248px);
+    top: 42%;
+    left: 22px;
+    right: auto;
+    bottom: auto;
+    z-index: 2;
+    transform-origin: 48% 42%;
+  }
+
+  .decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--a {
+    transform: rotate(-4deg) translateX(8px);
     top: 6px;
     left: auto;
-    right: -18px;
-    width: clamp(234px, 90%, 360px);
+    right: -22px;
+    width: clamp(244px, 92%, 380px);
     max-width: none;
     height: auto;
     aspect-ratio: auto;
     object-fit: contain;
     z-index: 1;
-    transform-origin: 28% 12%;
+    transform-origin: 22% 82%;
   }
 
-  .decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--b {
-    transform: translate(calc(-1 * var(--reveal-x, 0px)), var(--reveal-y, 0px)) rotate(-5deg);
-    width: clamp(208px, 88.2%, 331px);
+  .decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--b {
+    transform: rotate(-3.5deg);
+    width: clamp(178px, 74%, 278px);
+    bottom: -10px;
+    top: auto;
+    left: auto;
+    right: -18px;
+    z-index: 3;
+    transform-origin: 12% 90%;
+  }
+
+  .decade-block--collage-era-2010.decade-block--collage-rail-end .decade-collage-rail .decade-header-collage__photo--c {
+    transform: rotate(5deg);
+    width: clamp(162px, 58%, 252px);
+    top: 32%;
+    left: auto;
+    right: 34px;
+    bottom: auto;
+    z-index: 2;
+    transform-origin: 55% 42%;
+  }
+
+  .decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--a {
+    transform: rotate(-5deg) translateX(-2px);
+    top: 6px;
+    left: -10px;
+    right: auto;
+    width: clamp(190px, 84%, 304px);
+    max-width: none;
+    height: auto;
+    aspect-ratio: auto;
+    object-fit: contain;
+    z-index: 1;
+  }
+
+  .decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--b {
+    transform: rotate(6deg);
+    width: clamp(118px, 50%, 180px);
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    object-position: center center;
     bottom: 4px;
     top: auto;
-    right: auto;
-    left: 2px;
+    left: auto;
+    right: 12px;
     z-index: 3;
-    transform-origin: 10% 92%;
+    transform-origin: 90% 92%;
+  }
+
+  .decade-block--collage-era-2020.decade-block--collage-rail-start .decade-collage-rail .decade-header-collage__photo--c {
+    transform: rotate(-2deg);
+    width: clamp(165px, 55%, 248px);
+    top: 42%;
+    left: 22px;
+    right: auto;
+    bottom: auto;
+    z-index: 2;
+    transform-origin: 48% 42%;
   }
 }
 
@@ -980,4 +1391,136 @@ h1 {
   .section-scroll-next__icon {
     transition: none;
   }
+}
+
+/* --------------------------------------------------------------------------
+   Photo lightbox — full-screen viewer for a single collage photo.
+   The <dialog> fills the viewport; inner .photo-lightbox__content centers a
+   popover-style panel (.photo-lightbox__panel) matching .event-detail-popover
+   (cream body, dark header, square corners). Panel width follows the image
+   (max-content) up to 1200px / viewport. Clicks on the dialog
+   backdrop close it. Built once in js/photo-lightbox.js.
+   -------------------------------------------------------------------------- */
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  /* The dialog itself is the click target for backdrop dismissal; flex
+     centers the inner content wrapper. */
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* When the dialog is closed, <dialog> defaults to display: none — the rule
+   above sets display: grid which would force-show it. Restore the closed
+   default explicitly. */
+.photo-lightbox:not([open]) {
+  display: none;
+}
+
+.photo-lightbox::backdrop {
+  background: rgba(20, 18, 22, 0.78);
+}
+
+/* Centers the panel; width comes from the image (fit-content), like a floating card. */
+.photo-lightbox__content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-height: min(92vh, 92svh);
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+/* Same vocabulary as .event-detail-popover: cream panel, border, shadow, square corners.
+   Inline-flex + max-content width so header/footer match image width exactly.
+   Wider max-width than date popovers so collage photos can scale up. */
+.photo-lightbox__panel {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: max-content;
+  max-width: min(1200px, calc(100vw - 24px), calc(100svw - 24px));
+  max-height: min(92vh, 92svh);
+  margin: 0;
+  border: 2px solid var(--border);
+  background: #f2ede4;
+  box-shadow: var(--shadow);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.photo-lightbox__panel,
+.photo-lightbox__panel * {
+  border-radius: 0;
+}
+
+.photo-lightbox__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 8px 8px 8px 14px;
+  border-bottom: 1px solid rgba(242, 237, 228, 0.2);
+  background: var(--text);
+  color: #f2ede4;
+}
+
+/* Matches .event-detail-popover-date (artist name in header). */
+.photo-lightbox__header-title {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+  color: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.photo-lightbox__media {
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  background: rgba(20, 18, 22, 0.06);
+}
+
+.photo-lightbox__img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  /* Leave room for header + footer inside the dialog viewport. */
+  max-height: min(78vh, calc(92svh - 7.5rem));
+  object-fit: contain;
+  filter: none;
+}
+
+/* Cream footer: years line aligns with .event-detail-popover-artists. */
+.photo-lightbox__footer {
+  flex-shrink: 0;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.photo-lightbox__years {
+  margin: 0;
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.45;
 }
