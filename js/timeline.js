@@ -141,9 +141,9 @@ function decadeEventsOnRight(decadeIndex) {
 }
 
 const DECADE_DUMMY_BLURBS = [
-  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
-  "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-  "Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida.",
+  "I grew up in Puerto Rico with few chances to see international artists. When I was just 12, my favorite band, The Cranberries, toured Latin America. I had always dreamed of going to a concert.",
+  "The city gave me access to events I would've only dreamed of in the past. Despite struggling to make ends meet through the entire decade, I made it a priority to see as many of my favorite artists as I could.",
+  "Like most of us, I had big plans that were abruptly halted. The increased cost of live events after the pandemic and my new love of staying in have made me more selective about which events I attend.",
 ];
 
 /**
@@ -492,7 +492,7 @@ function setTimelineIntroComplete(stats) {
 
   const subtitle = document.createElement("h3");
   subtitle.className = "timeline-intro__subtitle";
-  subtitle.textContent = "Click a circle for details and setlist links.";
+  subtitle.textContent = "Click on each circle for event details. Hover on photos for sound.";
 
   const markerPlain = document.createElement("span");
   markerPlain.className = "timeline-intro__marker timeline-intro__marker--plain";
